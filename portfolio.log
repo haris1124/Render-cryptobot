@@ -1,0 +1,898 @@
+2025-07-23 14:18:17,983 - __main__ - INFO - Connected to binance exchange
+2025-07-23 14:18:18,168 - portfolio - ERROR - Error updating balance: binance {"code":-2015,"msg":"Invalid API-key, IP, or permissions for action"}
+2025-07-23 14:18:18,168 - portfolio - INFO - Portfolio initialized with balance: 10000.00 USDT
+2025-07-23 14:18:18,168 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-23 14:18:18,805 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 14:18:18,806 - __main__ - INFO - Telegram connection successful
+2025-07-23 14:18:18,807 - __main__ - INFO - Starting trading bot...
+2025-07-23 14:18:19,734 - signal_generator - INFO - Found 847 active USDT trading pairs
+2025-07-23 14:18:19,734 - signal_generator - INFO - Scanning 847 trading pairs
+2025-07-23 14:18:28,528 - signal_generator - INFO - Added XRP/USDT to used_coins for this session
+2025-07-23 14:18:28,528 - signal_generator - INFO - Valid signal for XRP/USDT:
+
+📊 Pair: XRP/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 1h
+🔍 Confidence: 85.4%
+
+💰 Entry: $3.280400
+🎯 TP1: $3.241035 (1.20%)
+🎯 TP2: $3.221353
+🎯 TP3: $3.201670
+
+🛑 Stop Loss: $3.328834 (1.48%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 52.86
+📊 FIB: BEARISH
+📊 ATR: 0.0373
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 14:18:28,529 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-23 14:18:29,155 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 14:18:29,155 - signal_generator - INFO - Sent signal for XRP/USDT to Telegram
+2025-07-23 14:18:36,271 - signal_generator - INFO - Added QTUM/USDT to used_coins for this session
+2025-07-23 14:18:36,272 - signal_generator - INFO - Valid signal for QTUM/USDT:
+
+📊 Pair: QTUM/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 30m
+🔍 Confidence: 86.8%
+
+💰 Entry: $2.379000
+🎯 TP1: $2.350452 (1.20%)
+🎯 TP2: $2.336178
+🎯 TP3: $2.321904
+
+🛑 Stop Loss: $2.420969 (1.76%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 45.57
+📊 FIB: BEARISH
+📊 ATR: 0.0245
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 14:18:36,502 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 14:18:36,502 - signal_generator - INFO - Sent signal for QTUM/USDT to Telegram
+2025-07-23 14:18:38,767 - signal_generator - INFO - Added ADA/USDT to used_coins for this session
+2025-07-23 14:18:38,768 - signal_generator - INFO - Valid signal for ADA/USDT:
+
+📊 Pair: ADA/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 1h
+🔍 Confidence: 89.0%
+
+💰 Entry: $0.824000
+🎯 TP1: $0.814112 (1.20%)
+🎯 TP2: $0.809168
+🎯 TP3: $0.804224
+
+🛑 Stop Loss: $0.839287 (1.86%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 44.88
+📊 FIB: BEARISH
+📊 ATR: 0.0114
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 14:18:39,013 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 14:18:39,014 - signal_generator - INFO - Sent signal for ADA/USDT to Telegram
+2025-07-23 14:18:45,076 - signal_generator - INFO - Added XLM/USDT to used_coins for this session
+2025-07-23 14:18:45,077 - signal_generator - INFO - Valid signal for XLM/USDT:
+
+📊 Pair: XLM/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 30m
+🔍 Confidence: 87.8%
+
+💰 Entry: $0.436400
+🎯 TP1: $0.431163 (1.20%)
+🎯 TP2: $0.428545
+🎯 TP3: $0.425926
+
+🛑 Stop Loss: $0.444699 (1.90%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 39.52
+📊 FIB: BEARISH
+📊 ATR: 0.0059
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 14:18:45,317 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 14:18:45,317 - signal_generator - INFO - Sent signal for XLM/USDT to Telegram
+2025-07-23 14:19:40,892 - signal_generator - INFO - Added WIN/USDT to used_coins for this session
+2025-07-23 14:19:40,892 - signal_generator - INFO - Valid signal for WIN/USDT:
+
+📊 Pair: WIN/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 30m
+🔍 Confidence: 86.0%
+
+💰 Entry: $0.000057
+🎯 TP1: $0.000057 (1.00%)
+🎯 TP2: $0.000056
+🎯 TP3: $0.000056
+
+🛑 Stop Loss: $0.000058 (1.80%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 42.99
+📊 FIB: BEARISH
+📊 ATR: 0.0000
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 14:19:41,478 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 14:19:41,479 - signal_generator - INFO - Sent signal for WIN/USDT to Telegram
+2025-07-23 14:19:58,630 - signal_generator - INFO - Added BAND/USDT to used_coins for this session
+2025-07-23 14:19:58,638 - signal_generator - INFO - Valid signal for BAND/USDT:
+
+📊 Pair: BAND/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 30m
+🔍 Confidence: 86.2%
+
+💰 Entry: $0.728000
+🎯 TP1: $0.719264 (1.20%)
+🎯 TP2: $0.714896
+🎯 TP3: $0.710528
+
+🛑 Stop Loss: $0.740418 (1.71%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 43.84
+📊 FIB: BEARISH
+📊 ATR: 0.0089
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 14:19:59,294 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 14:19:59,294 - signal_generator - INFO - Sent signal for BAND/USDT to Telegram
+2025-07-23 14:20:18,011 - signal_generator - INFO - Added RLC/USDT to used_coins for this session
+2025-07-23 14:20:18,012 - signal_generator - INFO - Valid signal for RLC/USDT:
+
+📊 Pair: RLC/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 1h
+🔍 Confidence: 88.5%
+
+💰 Entry: $1.147000
+🎯 TP1: $1.133236 (1.20%)
+🎯 TP2: $1.126354
+🎯 TP3: $1.119472
+
+🛑 Stop Loss: $1.160217 (1.15%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 42.09
+📊 FIB: BEARISH
+📊 ATR: 0.0156
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 14:20:18,609 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 14:20:18,614 - signal_generator - INFO - Sent signal for RLC/USDT to Telegram
+2025-07-23 14:20:26,432 - signal_generator - INFO - Added OGN/USDT to used_coins for this session
+2025-07-23 14:20:26,432 - signal_generator - INFO - Valid signal for OGN/USDT:
+
+📊 Pair: OGN/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 30m
+🔍 Confidence: 87.9%
+
+💰 Entry: $0.064300
+🎯 TP1: $0.063657 (1.00%)
+🎯 TP2: $0.063335
+🎯 TP3: $0.063014
+
+🛑 Stop Loss: $0.065396 (1.70%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 38.43
+📊 FIB: BEARISH
+📊 ATR: 0.0005
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 14:20:26,660 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 14:20:26,662 - signal_generator - INFO - Sent signal for OGN/USDT to Telegram
+2025-07-23 14:20:38,611 - signal_generator - INFO - Added DATA/USDT to used_coins for this session
+2025-07-23 14:20:38,612 - signal_generator - INFO - Valid signal for DATA/USDT:
+
+📊 Pair: DATA/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 30m
+🔍 Confidence: 88.8%
+
+💰 Entry: $0.018360
+🎯 TP1: $0.018176 (1.00%)
+🎯 TP2: $0.018085
+🎯 TP3: $0.017993
+
+🛑 Stop Loss: $0.018661 (1.64%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 36.14
+📊 FIB: BEARISH
+📊 ATR: 0.0002
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 14:20:38,834 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 14:20:38,836 - signal_generator - INFO - Sent signal for DATA/USDT to Telegram
+2025-07-23 14:21:15,033 - signal_generator - INFO - Added DCR/USDT to used_coins for this session
+2025-07-23 14:21:15,034 - signal_generator - INFO - Valid signal for DCR/USDT:
+
+📊 Pair: DCR/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 30m
+🔍 Confidence: 85.6%
+
+💰 Entry: $16.720000
+🎯 TP1: $16.552800 (1.00%)
+🎯 TP2: $16.469200
+🎯 TP3: $16.385600
+
+🛑 Stop Loss: $16.947475 (1.36%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 46.48
+📊 FIB: BEARISH
+📊 ATR: 0.1500
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 14:21:15,641 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 14:21:15,641 - signal_generator - INFO - Sent signal for DCR/USDT to Telegram
+2025-07-23 15:43:36,783 - __main__ - INFO - Connected to binance exchange
+2025-07-23 15:43:36,973 - portfolio - ERROR - Error updating balance: binance {"code":-2015,"msg":"Invalid API-key, IP, or permissions for action"}
+2025-07-23 15:43:36,974 - portfolio - INFO - Portfolio initialized with balance: 10000.00 USDT
+2025-07-23 15:43:36,975 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-23 15:43:37,578 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 15:43:37,579 - __main__ - INFO - Telegram connection successful
+2025-07-23 15:43:37,579 - __main__ - INFO - Starting trading bot...
+2025-07-23 15:43:39,011 - signal_generator - INFO - Found 847 active USDT trading pairs
+2025-07-23 15:43:39,012 - signal_generator - INFO - Scanning 847 trading pairs
+2025-07-23 15:47:59,542 - __main__ - INFO - Shutdown signal received...
+2025-07-23 17:34:28,921 - __main__ - INFO - Connected to binance exchange
+2025-07-23 17:34:29,109 - portfolio - ERROR - Error updating balance: binance {"code":-2015,"msg":"Invalid API-key, IP, or permissions for action"}
+2025-07-23 17:34:29,109 - portfolio - INFO - Portfolio initialized with balance: 10000.00 USDT
+2025-07-23 17:34:29,109 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-23 17:34:29,714 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 17:34:29,714 - __main__ - INFO - Telegram connection successful
+2025-07-23 17:34:29,715 - __main__ - INFO - Starting trading bot...
+2025-07-23 17:34:30,658 - signal_generator - INFO - Found 847 active USDT trading pairs
+2025-07-23 17:34:30,659 - signal_generator - INFO - Scanning 847 trading pairs
+2025-07-23 17:35:16,497 - signal_generator - INFO - Added ZRX/USDT to used_coins for this session
+2025-07-23 17:35:16,498 - signal_generator - INFO - Valid signal for ZRX/USDT:
+
+📊 Pair: ZRX/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 1h
+🔍 Confidence: 88.9%
+
+💰 Entry: $0.274600
+🎯 TP1: $0.271305 (1.20%)
+🎯 TP2: $0.269657
+🎯 TP3: $0.268010
+
+🛑 Stop Loss: $0.279170 (1.66%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 35.66
+📊 FIB: BEARISH
+📊 ATR: 0.0048
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 17:35:16,498 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-23 17:35:17,116 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 17:35:17,116 - signal_generator - INFO - Sent signal for ZRX/USDT to Telegram
+2025-07-23 17:35:48,109 - signal_generator - INFO - Added ANKR/USDT to used_coins for this session
+2025-07-23 17:35:48,109 - signal_generator - INFO - Valid signal for ANKR/USDT:
+
+📊 Pair: ANKR/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 1h
+🔍 Confidence: 85.7%
+
+💰 Entry: $0.017540
+🎯 TP1: $0.017330 (1.20%)
+🎯 TP2: $0.017224
+🎯 TP3: $0.017119
+
+🛑 Stop Loss: $0.017888 (1.98%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 42.77
+📊 FIB: BEARISH
+📊 ATR: 0.0003
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 17:35:48,715 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 17:35:48,715 - signal_generator - INFO - Sent signal for ANKR/USDT to Telegram
+2025-07-23 17:36:03,073 - signal_generator - INFO - Added CVC/USDT to used_coins for this session
+2025-07-23 17:36:03,073 - signal_generator - INFO - Valid signal for CVC/USDT:
+
+📊 Pair: CVC/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 1h
+🔍 Confidence: 87.4%
+
+💰 Entry: $0.105600
+🎯 TP1: $0.104333 (1.20%)
+🎯 TP2: $0.103699
+🎯 TP3: $0.103066
+
+🛑 Stop Loss: $0.107320 (1.63%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 43.38
+📊 FIB: BEARISH
+📊 ATR: 0.0018
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 17:36:03,299 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 17:36:03,300 - signal_generator - INFO - Sent signal for CVC/USDT to Telegram
+2025-07-23 17:39:05,276 - signal_generator - INFO - Added ASR/USDT to used_coins for this session
+2025-07-23 17:39:05,276 - signal_generator - INFO - Valid signal for ASR/USDT:
+
+📊 Pair: ASR/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 1h
+🔍 Confidence: 88.7%
+
+💰 Entry: $2.255000
+🎯 TP1: $2.232450 (1.00%)
+🎯 TP2: $2.221175
+🎯 TP3: $2.209900
+
+🛑 Stop Loss: $2.296794 (1.85%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 38.25
+📊 FIB: BEARISH
+📊 ATR: 0.0216
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 17:39:05,894 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 17:39:05,894 - signal_generator - INFO - Sent signal for ASR/USDT to Telegram
+2025-07-23 17:39:36,796 - signal_generator - INFO - Added ALICE/USDT to used_coins for this session
+2025-07-23 17:39:36,796 - signal_generator - INFO - Valid signal for ALICE/USDT:
+
+📊 Pair: ALICE/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 1h
+🔍 Confidence: 87.1%
+
+💰 Entry: $0.424700
+🎯 TP1: $0.419604 (1.20%)
+🎯 TP2: $0.417055
+🎯 TP3: $0.414507
+
+🛑 Stop Loss: $0.432412 (1.82%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 38.38
+📊 FIB: BEARISH
+📊 ATR: 0.0081
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 17:39:37,397 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 17:39:37,398 - signal_generator - INFO - Sent signal for ALICE/USDT to Telegram
+2025-07-23 17:40:06,688 - signal_generator - INFO - Added MASK/USDT to used_coins for this session
+2025-07-23 17:40:06,689 - signal_generator - INFO - Valid signal for MASK/USDT:
+
+📊 Pair: MASK/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 1h
+🔍 Confidence: 82.6%
+
+💰 Entry: $1.426000
+🎯 TP1: $1.408888 (1.20%)
+🎯 TP2: $1.400332
+🎯 TP3: $1.391776
+
+🛑 Stop Loss: $1.444301 (1.28%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 45.78
+📊 FIB: BEARISH
+📊 ATR: 0.0211
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 17:40:07,304 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 17:40:07,305 - signal_generator - INFO - Sent signal for MASK/USDT to Telegram
+2025-07-23 17:40:11,065 - signal_generator - INFO - Added XVG/USDT to used_coins for this session
+2025-07-23 17:40:11,065 - signal_generator - INFO - Valid signal for XVG/USDT:
+
+📊 Pair: XVG/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 1h
+🔍 Confidence: 87.9%
+
+💰 Entry: $0.007190
+🎯 TP1: $0.007104 (1.20%)
+🎯 TP2: $0.007061
+🎯 TP3: $0.007017
+
+🛑 Stop Loss: $0.007319 (1.80%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 36.88
+📊 FIB: BEARISH
+📊 ATR: 0.0001
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 17:40:11,310 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 17:40:11,310 - signal_generator - INFO - Sent signal for XVG/USDT to Telegram
+2025-07-23 17:40:24,197 - signal_generator - INFO - Added C98/USDT to used_coins for this session
+2025-07-23 17:40:24,198 - signal_generator - INFO - Valid signal for C98/USDT:
+
+📊 Pair: C98/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 15m
+🔍 Confidence: 87.8%
+
+💰 Entry: $0.056500
+🎯 TP1: $0.055822 (1.20%)
+🎯 TP2: $0.055483
+🎯 TP3: $0.055144
+
+🛑 Stop Loss: $0.057456 (1.69%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 37.98
+📊 FIB: BEARISH
+📊 ATR: 0.0006
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 17:40:24,600 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 17:40:24,600 - signal_generator - INFO - Sent signal for C98/USDT to Telegram
+2025-07-23 17:40:50,610 - signal_generator - INFO - Added XEC/USDT to used_coins for this session
+2025-07-23 17:40:50,610 - signal_generator - INFO - Valid signal for XEC/USDT:
+
+📊 Pair: XEC/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 1h
+🔍 Confidence: 85.7%
+
+💰 Entry: $0.000023
+🎯 TP1: $0.000022 (1.20%)
+🎯 TP2: $0.000022
+🎯 TP3: $0.000022
+
+🛑 Stop Loss: $0.000023 (1.96%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 41.42
+📊 FIB: BEARISH
+📊 ATR: 0.0000
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-23 17:40:51,207 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-23 17:40:51,208 - signal_generator - INFO - Sent signal for XEC/USDT to Telegram
+2025-07-23 17:40:59,916 - __main__ - INFO - Shutdown signal received...
+2025-07-24 08:02:37,312 - __main__ - INFO - Connected to binance exchange
+2025-07-24 08:02:37,498 - portfolio - ERROR - Error updating balance: binance {"code":-2015,"msg":"Invalid API-key, IP, or permissions for action"}
+2025-07-24 08:02:37,499 - portfolio - INFO - Portfolio initialized with balance: 10000.00 USDT
+2025-07-24 08:02:37,499 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-24 08:02:38,216 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-24 08:02:38,216 - __main__ - INFO - Telegram connection successful
+2025-07-24 08:02:38,217 - __main__ - INFO - Starting trading bot...
+2025-07-24 08:02:39,321 - signal_generator - INFO - Found 847 active USDT trading pairs
+2025-07-24 08:02:39,323 - signal_generator - INFO - Scanning 847 trading pairs
+2025-07-24 08:16:45,298 - signal_generator - INFO - Added SOPH/USDT to used_coins for this session
+2025-07-24 08:16:45,299 - signal_generator - INFO - Valid signal for SOPH/USDT:
+
+📊 Pair: SOPH/USDT
+📈 Direction: BULLISH
+🕒 Timeframe: 1h
+🔍 Confidence: 85.6%
+
+💰 Entry: $0.047240
+🎯 TP1: $0.047807 (1.20%)
+🎯 TP2: $0.048090
+🎯 TP3: $0.048374
+
+🛑 Stop Loss: $0.046492 (1.58%)
+📊 EMA: BULLISH
+📊 MACD: BULLISH
+📊 RSI: BULLISH
+📊 BB: BULLISH
+📊 ADX: 44.31
+📊 FIB: BULLISH
+📊 ATR: 0.0047
+📊 Stoch RSI: BULLISH
+📊 SuperTrend: BULLISH
+📊 VWAP: BULLISH
+
+2025-07-24 08:16:45,299 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-24 08:16:45,899 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-24 08:16:45,899 - signal_generator - INFO - Sent signal for SOPH/USDT to Telegram
+2025-07-24 08:18:17,656 - __main__ - INFO - Shutdown signal received...
+2025-07-24 14:10:06,580 - __main__ - INFO - Connected to binance exchange
+2025-07-24 14:10:06,765 - portfolio - ERROR - Error updating balance: binance {"code":-2015,"msg":"Invalid API-key, IP, or permissions for action"}
+2025-07-24 14:10:06,765 - portfolio - INFO - Portfolio initialized with balance: 10000.00 USDT
+2025-07-24 14:10:06,766 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-24 14:10:07,366 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-24 14:10:07,366 - __main__ - INFO - Telegram connection successful
+2025-07-24 14:10:07,366 - __main__ - INFO - Starting trading bot...
+2025-07-24 14:10:08,304 - signal_generator - INFO - Found 847 active USDT trading pairs
+2025-07-24 14:10:08,304 - signal_generator - INFO - Scanning 847 trading pairs
+2025-07-24 14:10:42,517 - signal_generator - INFO - Added USDC/USDT to used_coins for this session
+2025-07-24 14:10:42,517 - signal_generator - INFO - Valid signal for USDC/USDT:
+
+📊 Pair: USDC/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 15m
+🔍 Confidence: 86.8%
+
+💰 Entry: $0.999100
+🎯 TP1: $0.994104 (0.50%)
+🎯 TP2: $0.991607
+🎯 TP3: $0.989109
+
+🛑 Stop Loss: $1.013347 (1.43%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 62.95
+📊 FIB: BEARISH
+📊 ATR: 0.0006
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-24 14:10:42,517 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-24 14:10:43,114 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-24 14:10:43,115 - signal_generator - INFO - Sent signal for USDC/USDT to Telegram
+2025-07-24 14:11:29,922 - signal_generator - INFO - Added COS/USDT to used_coins for this session
+2025-07-24 14:11:29,922 - signal_generator - INFO - Valid signal for COS/USDT:
+
+📊 Pair: COS/USDT
+📈 Direction: BULLISH
+🕒 Timeframe: 1h
+🔍 Confidence: 88.1%
+
+💰 Entry: $0.004183
+🎯 TP1: $0.004233 (1.20%)
+🎯 TP2: $0.004258
+🎯 TP3: $0.004283
+
+🛑 Stop Loss: $0.004136 (1.12%)
+📊 EMA: BULLISH
+📊 MACD: BULLISH
+📊 RSI: BULLISH
+📊 BB: BULLISH
+📊 ADX: 44.61
+📊 FIB: BULLISH
+📊 ATR: 0.0001
+📊 Stoch RSI: BULLISH
+📊 SuperTrend: BULLISH
+📊 VWAP: BULLISH
+
+2025-07-24 14:11:30,514 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-24 14:11:30,514 - signal_generator - INFO - Sent signal for COS/USDT to Telegram
+2025-07-24 14:13:00,504 - signal_generator - INFO - Added DCR/USDT to used_coins for this session
+2025-07-24 14:13:00,504 - signal_generator - INFO - Valid signal for DCR/USDT:
+
+📊 Pair: DCR/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 5m
+🔍 Confidence: 88.4%
+
+💰 Entry: $15.680000
+🎯 TP1: $15.601600 (0.50%)
+🎯 TP2: $15.562400
+🎯 TP3: $15.523200
+
+🛑 Stop Loss: $15.860569 (1.15%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 66.63
+📊 FIB: BEARISH
+📊 ATR: 0.0629
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-24 14:13:01,138 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-24 14:13:01,139 - signal_generator - INFO - Sent signal for DCR/USDT to Telegram
+2025-07-24 14:13:16,112 - __main__ - INFO - Shutdown signal received...
+2025-07-24 14:20:46,155 - __main__ - INFO - Connected to binance exchange
+2025-07-24 14:20:46,342 - portfolio - ERROR - Error updating balance: binance {"code":-2015,"msg":"Invalid API-key, IP, or permissions for action"}
+2025-07-24 14:20:46,342 - portfolio - INFO - Portfolio initialized with balance: 10000.00 USDT
+2025-07-24 14:20:46,343 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-24 14:20:46,962 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-24 14:20:46,963 - __main__ - INFO - Telegram connection successful
+2025-07-24 14:20:46,963 - __main__ - INFO - Starting trading bot...
+2025-07-24 14:20:47,860 - signal_generator - INFO - Found 847 active USDT trading pairs
+2025-07-24 14:20:47,860 - signal_generator - INFO - Scanning 847 trading pairs
+2025-07-24 14:22:07,201 - __main__ - INFO - Shutdown signal received...
+2025-07-24 14:22:32,105 - __main__ - INFO - Connected to binance exchange
+2025-07-24 14:22:32,297 - portfolio - ERROR - Error updating balance: binance {"code":-2015,"msg":"Invalid API-key, IP, or permissions for action"}
+2025-07-24 14:22:32,297 - portfolio - INFO - Portfolio initialized with balance: 10000.00 USDT
+2025-07-24 14:22:32,298 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-24 14:22:32,895 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-24 14:22:32,896 - __main__ - INFO - Telegram connection successful
+2025-07-24 14:22:32,896 - __main__ - INFO - Starting trading bot...
+2025-07-24 14:22:33,826 - signal_generator - INFO - Found 847 active USDT trading pairs
+2025-07-24 14:22:33,826 - signal_generator - INFO - Scanning 847 trading pairs
+2025-07-24 14:23:53,484 - signal_generator - INFO - Added COS/USDT to used_coins for this session
+2025-07-24 14:23:53,486 - signal_generator - INFO - Valid signal for COS/USDT:
+
+📊 Pair: COS/USDT
+📈 Direction: BULLISH
+🕒 Timeframe: 1h
+🔍 Confidence: 88.9%
+
+💰 Entry: $0.004189
+🎯 TP1: $0.004239 (1.20%)
+🎯 TP2: $0.004264
+🎯 TP3: $0.004290
+
+🛑 Stop Loss: $0.004132 (1.35%)
+📊 EMA: BULLISH
+📊 MACD: BULLISH
+📊 RSI: BULLISH
+📊 BB: BULLISH
+📊 ADX: 44.61
+📊 FIB: BULLISH
+📊 ATR: 0.0001
+📊 Stoch RSI: BULLISH
+📊 SuperTrend: BULLISH
+📊 VWAP: BULLISH
+
+2025-07-24 14:23:53,486 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-24 14:23:54,070 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-24 14:23:54,071 - signal_generator - INFO - Sent signal for COS/USDT to Telegram
+2025-07-24 14:25:24,853 - signal_generator - INFO - Added DCR/USDT to used_coins for this session
+2025-07-24 14:25:24,855 - signal_generator - INFO - Valid signal for DCR/USDT:
+
+📊 Pair: DCR/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 30m
+🔍 Confidence: 88.4%
+
+💰 Entry: $15.560000
+🎯 TP1: $15.404400 (1.00%)
+🎯 TP2: $15.326600
+🎯 TP3: $15.248800
+
+🛑 Stop Loss: $15.802127 (1.56%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 35.77
+📊 FIB: BEARISH
+📊 ATR: 0.1464
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-24 14:25:25,446 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-24 14:25:25,447 - signal_generator - INFO - Sent signal for DCR/USDT to Telegram
+2025-07-24 14:36:46,834 - __main__ - INFO - Shutdown signal received...
+2025-07-24 17:42:37,281 - __main__ - INFO - Connected to binance exchange
+2025-07-24 17:42:37,470 - portfolio - ERROR - Error updating balance: binance {"code":-2015,"msg":"Invalid API-key, IP, or permissions for action"}
+2025-07-24 17:42:37,470 - portfolio - INFO - Portfolio initialized with balance: 10000.00 USDT
+2025-07-24 17:42:37,470 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-24 17:42:38,067 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-24 17:42:38,068 - __main__ - INFO - Telegram connection successful
+2025-07-24 17:42:38,068 - __main__ - INFO - Starting trading bot...
+2025-07-24 17:42:39,195 - signal_generator - INFO - Found 847 active USDT trading pairs
+2025-07-24 17:42:39,195 - signal_generator - INFO - Scanning 847 trading pairs
+2025-07-24 17:55:37,973 - signal_generator - INFO - Added SHELL/USDT to used_coins for this session
+2025-07-24 17:55:37,973 - signal_generator - INFO - Valid signal for SHELL/USDT:
+
+📊 Pair: SHELL/USDT
+📈 Direction: BULLISH
+🕒 Timeframe: 15m
+🔍 Confidence: 85.7%
+
+💰 Entry: $0.201800
+🎯 TP1: $0.204222 (1.20%)
+🎯 TP2: $0.205432
+🎯 TP3: $0.206643
+
+🛑 Stop Loss: $0.199057 (1.36%)
+📊 EMA: BULLISH
+📊 MACD: BULLISH
+📊 RSI: BULLISH
+📊 BB: BULLISH
+📊 ADX: 49.94
+📊 FIB: BULLISH
+📊 ATR: 0.0044
+📊 Stoch RSI: BULLISH
+📊 SuperTrend: BULLISH
+📊 VWAP: BULLISH
+
+2025-07-24 17:55:37,974 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-24 17:55:38,614 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-24 17:55:38,614 - signal_generator - INFO - Sent signal for SHELL/USDT to Telegram
+2025-07-24 18:00:32,526 - __main__ - INFO - Shutdown signal received...
+2025-07-25 05:25:55,342 - __main__ - INFO - Connected to binance exchange
+2025-07-25 05:25:55,531 - portfolio - ERROR - Error updating balance: binance {"code":-2015,"msg":"Invalid API-key, IP, or permissions for action"}
+2025-07-25 05:25:55,533 - portfolio - INFO - Portfolio initialized with balance: 10000.00 USDT
+2025-07-25 05:25:55,534 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-25 05:25:56,126 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-25 05:25:56,127 - __main__ - INFO - Telegram connection successful
+2025-07-25 05:25:56,127 - __main__ - INFO - Starting trading bot...
+2025-07-25 05:25:57,066 - signal_generator - INFO - Found 847 active USDT trading pairs
+2025-07-25 05:25:57,073 - signal_generator - INFO - Scanning 847 trading pairs
+2025-07-25 05:36:29,082 - __main__ - INFO - Shutdown signal received...
+2025-07-25 05:42:00,828 - __main__ - INFO - Connected to binance exchange
+2025-07-25 05:42:01,016 - portfolio - ERROR - Error updating balance: binance {"code":-2015,"msg":"Invalid API-key, IP, or permissions for action"}
+2025-07-25 05:42:01,016 - portfolio - INFO - Portfolio initialized with balance: 10000.00 USDT
+2025-07-25 05:42:01,016 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-25 05:42:01,617 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-25 05:42:01,617 - __main__ - INFO - Telegram connection successful
+2025-07-25 05:42:01,617 - __main__ - INFO - Starting trading bot...
+2025-07-25 05:42:02,457 - signal_generator - INFO - Found 847 active USDT trading pairs
+2025-07-25 05:42:02,457 - signal_generator - INFO - Scanning 847 trading pairs
+2025-07-25 05:52:56,193 - __main__ - INFO - Connected to binance exchange
+2025-07-25 05:52:56,385 - portfolio - ERROR - Error updating balance: binance {"code":-2015,"msg":"Invalid API-key, IP, or permissions for action"}
+2025-07-25 05:52:56,385 - portfolio - INFO - Portfolio initialized with balance: 10000.00 USDT
+2025-07-25 05:52:56,386 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-25 05:52:56,991 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-25 05:52:56,991 - __main__ - INFO - Telegram connection successful
+2025-07-25 05:52:56,991 - __main__ - INFO - Starting trading bot...
+2025-07-25 05:52:57,868 - signal_generator - INFO - Found 847 active USDT trading pairs
+2025-07-25 05:52:57,868 - signal_generator - INFO - Scanning 847 trading pairs
+2025-07-25 06:02:12,391 - signal_generator - INFO - Added PEPE/USDT to used_coins for this session
+2025-07-25 06:02:12,392 - signal_generator - INFO - Valid signal for PEPE/USDT:
+
+📊 Pair: PEPE/USDT
+📈 Direction: BULLISH
+🕒 Timeframe: 5m
+🔍 Confidence: 86.7%
+
+💰 Entry: $0.000025
+🎯 TP1: $0.000025 (1.20%)
+🎯 TP2: $0.000025
+🎯 TP3: $0.000025
+
+🛑 Stop Loss: $0.000025 (1.04%)
+📊 EMA: BULLISH
+📊 MACD: BULLISH
+📊 RSI: BULLISH
+📊 BB: BULLISH
+📊 ADX: 67.22
+📊 FIB: BULLISH
+📊 ATR: 0.0000
+📊 Stoch RSI: BULLISH
+📊 SuperTrend: BULLISH
+📊 VWAP: BULLISH
+
+2025-07-25 06:02:12,392 - Telegram_client - INFO - Telegram aiohttp session started.
+2025-07-25 06:02:12,979 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-25 06:02:12,980 - signal_generator - INFO - Sent signal for PEPE/USDT to Telegram
+2025-07-25 06:06:35,374 - signal_generator - INFO - Added HYPER/USDT to used_coins for this session
+2025-07-25 06:06:35,374 - signal_generator - INFO - Valid signal for HYPER/USDT:
+
+📊 Pair: HYPER/USDT
+📈 Direction: BULLISH
+🕒 Timeframe: 1h
+🔍 Confidence: 87.8%
+
+💰 Entry: $0.634400
+🎯 TP1: $0.642013 (1.20%)
+🎯 TP2: $0.645819
+🎯 TP3: $0.649626
+
+🛑 Stop Loss: $0.625600 (1.39%)
+📊 EMA: BULLISH
+📊 MACD: BULLISH
+📊 RSI: BULLISH
+📊 BB: BULLISH
+📊 ADX: 57.59
+📊 FIB: BULLISH
+📊 ATR: 0.0704
+📊 Stoch RSI: BULLISH
+📊 SuperTrend: BULLISH
+📊 VWAP: BULLISH
+
+2025-07-25 06:06:35,963 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-25 06:06:35,964 - signal_generator - INFO - Sent signal for HYPER/USDT to Telegram
+2025-07-25 06:06:47,792 - signal_generator - INFO - Added SXT/USDT to used_coins for this session
+2025-07-25 06:06:47,796 - signal_generator - INFO - Valid signal for SXT/USDT:
+
+📊 Pair: SXT/USDT
+📈 Direction: BEARISH
+🕒 Timeframe: 1h
+🔍 Confidence: 86.8%
+
+💰 Entry: $0.087000
+🎯 TP1: $0.085956 (1.20%)
+🎯 TP2: $0.085434
+🎯 TP3: $0.084912
+
+🛑 Stop Loss: $0.087898 (1.03%)
+📊 EMA: BEARISH
+📊 MACD: BEARISH
+📊 RSI: BEARISH
+📊 BB: BEARISH
+📊 ADX: 42.63
+📊 FIB: BEARISH
+📊 ATR: 0.0021
+📊 Stoch RSI: BEARISH
+📊 SuperTrend: BEARISH
+📊 VWAP: BEARISH
+
+2025-07-25 06:06:48,014 - Telegram_client - INFO - Message sent successfully to Telegram
+2025-07-25 06:06:48,014 - signal_generator - INFO - Sent signal for SXT/USDT to Telegram
+2025-07-25 06:20:07,440 - __main__ - INFO - Shutdown signal received...
