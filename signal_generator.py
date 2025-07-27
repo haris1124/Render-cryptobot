@@ -107,11 +107,11 @@ class SignalGenerator:
                     directions.append(signal['direction'])
 
             # Require at least 3 timeframes to agree on the same direction
-            if len(signals) >= 2:
+            if len(signals) >= 3:
                 dir_counts = {'BULLISH': directions.count('BULLISH'), 'BEARISH': directions.count('BEARISH')}
-                if dir_counts['BULLISH'] >= 2:
+                if dir_counts['BULLISH'] >= 3:
                     agreed_direction = 'BULLISH'
-                elif dir_counts['BEARISH'] >= 2:
+                elif dir_counts['BEARISH'] >= 3:
                     agreed_direction = 'BEARISH'
                 else:
                     return []
