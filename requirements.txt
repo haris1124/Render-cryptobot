@@ -1,0 +1,7 @@
+ccxt
+python-telegram-bot
+pandas
+numpy
+python-dotenv
+aiohttp
+asyncio
