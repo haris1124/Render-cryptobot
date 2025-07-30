@@ -335,8 +335,13 @@ class SignalGenerator:
             logger.error(f"Error generating signal for {symbol} on {timeframe}: {e}")
             return None
 
-    def format_signal(self, signal: Dict) -> str:
-        try:
+    from datetime import datetime, timedelta
+
+def format_signal(self, signal: Dict) -> str:
+    try:
+        # Get Pakistan time (UTC+5)
+        pk_time = datetime.utcnow() + timedelta(hours=5)
+        time_str = pk_time.strftime('Time: %Y-%m-%d %H:%M:%S')
             tp_levels = signal.get('tp_levels', [signal['entry']] * 3)
             tp1_pct = signal.get('tp1_percent', 1)  # default 1%
             sl_pct = signal.get('sl_percent', 1)    # default 1%
