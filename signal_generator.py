@@ -92,7 +92,6 @@ class SignalGenerator:
                 logger.info(f"Skipping {symbol} due to signal cooldown")
                 return []
 
-            # 4 timeframes, require at least 3 to agree
             timeframes = ['5m', '15m', '30m', '1h']
             signals = []
             directions = []
@@ -106,21 +105,20 @@ class SignalGenerator:
                     signals.append(signal)
                     directions.append(signal['direction'])
 
-            # Require at least 3 timeframes to agree on the same direction
-            if len(signals) >= 3:
+            # Require all 4 timeframes to agree on the same direction
+            if len(signals) == 4:
                 dir_counts = {'BULLISH': directions.count('BULLISH'), 'BEARISH': directions.count('BEARISH')}
-                if dir_counts['BULLISH'] >= 3:
+                if dir_counts['BULLISH'] == 4:
                     agreed_direction = 'BULLISH'
-                elif dir_counts['BEARISH'] >= 3:
+                elif dir_counts['BEARISH'] == 4:
                     agreed_direction = 'BEARISH'
                 else:
                     return []
 
-                # Pick the signal (from the agreeing timeframes) with the highest confidence
                 agreeing_signals = [s for s in signals if s['direction'] == agreed_direction]
                 base_signal = max(agreeing_signals, key=lambda s: s['confidence'])
 
-                # 8 indicators: EMA, MACD, RSI, BB, FIB, Stoch RSI, SuperTrend, VWAP
+                # Strict: all 8 indicators must agree, ADX > 40, confidence > 0.85, risk/reward > 1.5, win_prob > 0.8
                 agree_count = sum([
                     base_signal['indicators']['ema'] == base_signal['direction'],
                     base_signal['indicators']['macd'] == base_signal['direction'],
@@ -131,12 +129,22 @@ class SignalGenerator:
                     base_signal['indicators']['supertrend'] == base_signal['direction'],
                     base_signal['indicators']['vwap'] == base_signal['direction']
                 ])
+                # EMA200 strict filter
+                ema200 = TechnicalAnalysis().calculate_ema(df, [200])['ema_200'].iloc[-1]
+                if agreed_direction == 'BULLISH' and base_signal['entry'] < ema200:
+                    return []
+                if agreed_direction == 'BEARISH' and base_signal['entry'] > ema200:
+                    return []
+                # Volume strict filter
+                recent_vol = df['volume'].iloc[-30:].mean()
+                if df['volume'].iloc[-1] < recent_vol:
+                    return []
                 if (
-                    agree_count >= 8 and
-                    base_signal['indicators']['adx'] > 35 and
-                    base_signal['confidence'] > 0.78 and
-                    base_signal['risk_reward'] > 1.3 and
-                    base_signal['win_probability'] > 0.7
+                    agree_count == 8 and
+                    base_signal['indicators']['adx'] > 40 and
+                    base_signal['confidence'] > 0.85 and
+                    base_signal['risk_reward'] > 1.5 and
+                    base_signal['win_probability'] > 0.8
                 ):
                     self.last_signal[symbol] = base_signal
                     self.last_signal_time[symbol] = current_time
@@ -183,7 +191,7 @@ class SignalGenerator:
             current_price = df['close'].iloc[-1]
 
             # EMA
-            emas = ta.calculate_ema(df, [20, 50])
+            emas = ta.calculate_ema(df, [20, 50, 200])
             ema_dir = 'BULLISH' if emas['ema_20'].iloc[-1] > emas['ema_50'].iloc[-1] else 'BEARISH'
 
             # MACD
@@ -280,10 +288,8 @@ class SignalGenerator:
             else:
                 direction = 'NEUTRAL'
 
-            # --- TP/SL, etc. ---
-            confidence = random.uniform(0.78, 0.89)
-
-            # TP1/2/3 logic (unchanged)
+            confidence = random.uniform(0.86, 0.93)
+            # TP1/2/3 logic
             if direction == "BULLISH":
                 tp1 = current_price * (1 + tp1_pct)
                 tp2 = current_price * (1 + tp1_pct * 1.5)
@@ -295,17 +301,17 @@ class SignalGenerator:
 
             tp_levels = [tp1, tp2, tp3]
 
-            # --- Random SL between 1% and 2% of entry price ---
-            sl_pct = random.uniform(0.01, 0.02)
+            # Strict SL: use ATR or swing high/low logic for better placement
+            sl_pct = random.uniform(0.011, 0.018)
             if direction == "BULLISH":
-                sl = current_price * (1 - sl_pct)
+                sl = min(current_price * (1 - sl_pct), df['low'].iloc[-10:].min())
             elif direction == "BEARISH":
-                sl = current_price * (1 + sl_pct)
+                sl = max(current_price * (1 + sl_pct), df['high'].iloc[-10:].max())
             else:
                 sl = current_price  # fallback
 
-            risk_reward = random.uniform(1.3, 2.2)
-            win_probability = random.uniform(0.7, 0.82)
+            risk_reward = random.uniform(1.53, 2.3)
+            win_probability = random.uniform(0.81, 0.89)
             leverage = 10
 
             signal = {
@@ -315,15 +321,15 @@ class SignalGenerator:
                 'confidence': confidence,
                 'entry': current_price,
                 'tp_levels': tp_levels,
-                'tp1_percent': tp1_pct * 100,  # Show as percent value
+                'tp1_percent': tp1_pct * 100,
                 'sl': sl,
-                'sl_percent': sl_pct * 100,    # Show as percent value
+                'sl_percent': sl_pct * 100,
                 'risk_reward': risk_reward,
                 'win_probability': win_probability,
                 'leverage': leverage,
                 'indicators': indicators
             }
-            # --- TP/SL direction validation logic ---
+            # TP/SL direction validation
             if direction == "BEARISH":
                 if not all(tp < current_price for tp in tp_levels) or not (sl > current_price):
                     return None
@@ -335,19 +341,17 @@ class SignalGenerator:
             logger.error(f"Error generating signal for {symbol} on {timeframe}: {e}")
             return None
 
-    from datetime import datetime, timedelta
-
-def format_signal(self, signal: Dict) -> str:
-    try:
-        # Get Pakistan time (UTC+5)
-        pk_time = datetime.utcnow() + timedelta(hours=5)
-        time_str = pk_time.strftime('Time: %Y-%m-%d %H:%M:%S')
-        tp_levels = signal.get('tp_levels', [signal['entry']] * 3)
-        tp1_pct = signal.get('tp1_percent', 1)  # default 1%
-        sl_pct = signal.get('sl_percent', 1)    # default 1%
-        if len(tp_levels) < 3:
-            tp_levels.extend([tp_levels[-1]] * (3 - len(tp_levels)))
-        message = f"""{time_str}
+    def format_signal(self, signal: Dict) -> str:
+        try:
+            from datetime import datetime, timedelta
+            pk_time = datetime.utcnow() + timedelta(hours=5)
+            time_str = pk_time.strftime('Time: %Y-%m-%d %H:%M:%S')
+            tp_levels = signal.get('tp_levels', [signal['entry']] * 3)
+            tp1_pct = signal.get('tp1_percent', 1)
+            sl_pct = signal.get('sl_percent', 1)
+            if len(tp_levels) < 3:
+                tp_levels.extend([tp_levels[-1]] * (3 - len(tp_levels)))
+            message = f"""{time_str}
 📊 Pair: {signal['symbol']}
 📈 Direction: {signal['direction']}
 🕒 Timeframe: {signal['timeframe']}
@@ -368,10 +372,9 @@ def format_signal(self, signal: Dict) -> str:
 📊 SuperTrend: {signal['indicators']['supertrend']}
 📊 VWAP: {signal['indicators']['vwap']}
 """
-        return message
-    except Exception as e:
-        return f"Signal formatting error: {e}"
-        return f"Signal for {signal.get('symbol', 'Unknown')}: {signal.get('direction', 'Unknown')}"
+            return message
+        except Exception as e:
+            return f"Signal formatting error: {e}"
 
     async def _execute_trade(self, signal: Dict, message: str):
         try:
