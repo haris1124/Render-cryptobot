@@ -5,3 +5,5 @@ numpy
 python-dotenv
 aiohttp
 asyncio
+fastapi
+uvicorn
