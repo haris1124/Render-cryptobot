@@ -342,22 +342,20 @@ def format_signal(self, signal: Dict) -> str:
         # Get Pakistan time (UTC+5)
         pk_time = datetime.utcnow() + timedelta(hours=5)
         time_str = pk_time.strftime('Time: %Y-%m-%d %H:%M:%S')
-            tp_levels = signal.get('tp_levels', [signal['entry']] * 3)
-            tp1_pct = signal.get('tp1_percent', 1)  # default 1%
-            sl_pct = signal.get('sl_percent', 1)    # default 1%
-            if len(tp_levels) < 3:
-                tp_levels.extend([tp_levels[-1]] * (3 - len(tp_levels)))
-            message = f"""
+        tp_levels = signal.get('tp_levels', [signal['entry']] * 3)
+        tp1_pct = signal.get('tp1_percent', 1)  # default 1%
+        sl_pct = signal.get('sl_percent', 1)    # default 1%
+        if len(tp_levels) < 3:
+            tp_levels.extend([tp_levels[-1]] * (3 - len(tp_levels)))
+        message = f"""{time_str}
 📊 Pair: {signal['symbol']}
 📈 Direction: {signal['direction']}
 🕒 Timeframe: {signal['timeframe']}
 🔍 Confidence: {signal['confidence']:.1%}
-
 💰 Entry: ${signal['entry']:.6f}
 🎯 TP1: ${tp_levels[0]:.6f} ({tp1_pct:.2f}%)
 🎯 TP2: ${tp_levels[1]:.6f}
 🎯 TP3: ${tp_levels[2]:.6f}
-
 🛑 Stop Loss: ${signal['sl']:.6f} ({sl_pct:.2f}%)
 📊 EMA: {signal['indicators']['ema']}
 📊 MACD: {signal['indicators']['macd']}
@@ -370,10 +368,10 @@ def format_signal(self, signal: Dict) -> str:
 📊 SuperTrend: {signal['indicators']['supertrend']}
 📊 VWAP: {signal['indicators']['vwap']}
 """
-            return message
-        except Exception as e:
-            logger.error(f"Error formatting signal: {e}")
-            return f"Signal for {signal.get('symbol', 'Unknown')}: {signal.get('direction', 'Unknown')}"
+        return message
+    except Exception as e:
+        return f"Signal formatting error: {e}"
+        return f"Signal for {signal.get('symbol', 'Unknown')}: {signal.get('direction', 'Unknown')}"
 
     async def _execute_trade(self, signal: Dict, message: str):
         try:
