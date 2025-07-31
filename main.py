@@ -466,9 +466,11 @@ async def start_bot():
             await bot.cleanup()
         logger.info("Trading bot stopped")
 
+@app.on_event("startup")
+async def start_bot_task():
+    # This will start your bot in the background when FastAPI starts
+    asyncio.create_task(start_bot())
+
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    # Start the trading bot in the background
-    loop.create_task(start_bot())
-    # Start the FastAPI web server (port 10000 is Render default, but check your Render settings)
+    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=10000)
