@@ -240,12 +240,9 @@ class SignalGenerator:
 
             # Dynamic TP1 percentage based on ATR %
             atr_percent = atr_value / current_price if current_price != 0 else 0
-            if atr_percent < 0.005:
-                tp1_pct = 0.005  # 0.5%
-            elif atr_percent < 0.01:
-                tp1_pct = 0.01   # 1%
-            else:
-                tp1_pct = 0.012  # 1.2%
+            # Ensure TP1 percent is at least 0.8% and at most 1.5%
+             tp1_pct = max(atr_percent, 0.008)     # 0.008 = 0.8%
+            tp1_pct = min(tp1_pct, 0.015)         # 0.015 = 1.5%
 
             # Stochastic RSI
             stoch_rsi = ta.calculate_stoch_rsi(df)
