@@ -235,14 +235,12 @@ class SignalGenerator:
                     fib_dir = 'BEARISH'
 
             # ATR
-           # ATR calculation
-atr = ta.calculate_atr(df, period=14)
-atr_value = float(atr.iloc[-1]) if not atr.empty else 0
+            atr = ta.calculate_atr(df, period=14)
+        atr_value = float(atr.iloc[-1]) if not atr.empty else 0
 
-atr_percent = atr_value / current_price if current_price != 0 else 0
-# Ensure TP1 percent is at least 0.8% and at most 1.5%
-tp1_pct = max(atr_percent, 0.008)
-tp1_pct = min(tp1_pct, 0.015)
+        atr_percent = atr_value / current_price if current_price != 0 else 0
+        tp1_pct = max(atr_percent, 0.008)
+        tp1_pct = min(tp1_pct, 0.015)
 
             # Stochastic RSI
             stoch_rsi = ta.calculate_stoch_rsi(df)
