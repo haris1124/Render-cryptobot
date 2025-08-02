@@ -174,6 +174,8 @@ class SignalGenerator:
 
             for symbol in available_symbols:
                 signals = await self.analyze_pair(symbol)
+                if not signals:
+                    signals = []
                 for signal in signals:
                     message = self.format_signal(signal)
                     logger.info(f"Valid signal for {symbol}:\n{message}")
