@@ -308,7 +308,7 @@ class SignalGenerator:
             else:
                 return [current_price * 0.99, current_price * 0.985, current_price * 0.98], current_price * 1.01, 1.0, 1.0
 
-        def _calculate_confidence(self, indicators: Dict) -> float:
+            def _calculate_confidence(self, indicators: Dict) -> float:
         """Calculate signal confidence based on indicator agreement"""
         try:
             directions = [
@@ -339,7 +339,6 @@ class SignalGenerator:
         except Exception as e:
             logger.error(f"Error in _calculate_confidence: {e}")
             return 0.7  # Default confidence
-
     def _calculate_win_probability(self, indicators: Dict) -> float:
         """Calculate win probability based on indicators"""
         try:
