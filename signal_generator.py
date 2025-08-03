@@ -1,12 +1,12 @@
 import logging
 import time
 import asyncio
-import numpy as np
-import pandas as pd
-import ccxt.async_support as ccxt
-from typing import Dict, List, Optional, Tuple
-from datetime import datetime, timedelta
 import random
+import pandas as pd
+import numpy as np
+from typing import Dict, List, Optional, Tuple
+from datetime import datetime
+import ccxt.async_support as ccxt
 from config import Config
 from Technical_analysis import TechnicalAnalysis
 from Telegram_client import Telegram
@@ -15,13 +15,13 @@ from portfolio import Portfolio
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('trading_bot_accurate_sl.log'),
+        logging.FileHandler('trading_bot.log'),
         logging.StreamHandler()
     ]
 )
-logger = logging.getLogger("StrictSLSignalGenerator")
+logger = logging.getLogger("SignalGenerator")
 
 class SignalGenerator:
     def __init__(self, config: Config):
@@ -30,45 +30,47 @@ class SignalGenerator:
             'apiKey': config.BINANCE_API_KEY,
             'secret': config.BINANCE_API_SECRET,
             'enableRateLimit': True,
-            'options': {'defaultType': 'future'}
+            'options': {
+                'defaultType': 'future',
+                'adjustForTimeDifference': True
+            }
         })
         self.telegram = Telegram(config.TELEGRAM_BOT_TOKEN, config.TELEGRAM_CHAT_ID)
         self.portfolio = Portfolio(self.binance, config)
         self.ta = TechnicalAnalysis()
         self.last_signals = {}
         self.cooldown = 900  # 15 minutes
-        self.required_indicators = 8
         self.min_sl_pct = 0.5  # 0.5% minimum
         self.max_sl_pct = 1.5  # 1.5% maximum
 
     async def get_real_time_data(self, symbol: str, timeframe: str) -> Optional[pd.DataFrame]:
-    """Fetch real-time market data with freshness check"""
-    try:
-        ohlcv = await self.binance.fetch_ohlcv(symbol, timeframe, limit=200)
-        if not ohlcv or len(ohlcv) < 100:
-            return None
+        """Fetch real-time market data with freshness check"""
+        try:
+            ohlcv = await self.binance.fetch_ohlcv(symbol, timeframe, limit=200)
+            if not ohlcv or len(ohlcv) < 100:
+                return None
 
-        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-        
-        # Convert to timezone-naive UTC
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms').dt.tz_localize(None)
-        df.set_index('timestamp', inplace=True)
-        
-        # Get current time as timezone-naive UTC
-        current_time = pd.Timestamp.utcnow().tz_localize(None)
-        last_candle_time = df.index[-1]
-        
-        # Check data freshness (2 minutes threshold)
-        time_diff = (current_time - last_candle_time).total_seconds()
-        if time_diff > 120:
-            logger.warning(f"Stale data for {symbol} on {timeframe} - {time_diff:.0f} seconds old")
-            return None
+            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             
-        return df
-        
-    except Exception as e:
-        logger.error(f"Error fetching data for {symbol}: {str(e)}")
-        return None
+            # Convert to timezone-naive UTC
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms').dt.tz_localize(None)
+            df.set_index('timestamp', inplace=True)
+            
+            # Get current time as timezone-naive UTC
+            current_time = pd.Timestamp.utcnow().tz_localize(None)
+            last_candle_time = df.index[-1]
+            
+            # Check data freshness (2 minutes threshold)
+            time_diff = (current_time - last_candle_time).total_seconds()
+            if time_diff > 120:
+                logger.warning(f"Stale data for {symbol} on {timeframe} - {time_diff:.0f} seconds old")
+                return None
+                
+            return df
+            
+        except Exception as e:
+            logger.error(f"Error fetching data for {symbol}: {str(e)}")
+            return None
 
     def calculate_sl_tp(self, entry_price: float, direction: str) -> Tuple[float, List[float], float]:
         """Calculate SL and TP levels with strict 0.5-1.5% SL"""
@@ -97,8 +99,8 @@ class SignalGenerator:
             else:
                 return entry_price * 1.01, [entry_price * 0.98, entry_price * 0.97, entry_price * 0.95], 1.0
 
-    async def check_indicators(self, df: pd.DataFrame) -> Tuple[str, float]:
-        """Check all 8 indicators for confirmation"""
+    async def check_indicators(self, df: pd.DataFrame) -> Tuple[str, float, Dict]:
+        """Check all indicators and return direction, confidence, and indicator states"""
         try:
             indicators = {}
             close = df['close'].values
@@ -131,6 +133,7 @@ class SignalGenerator:
             # 5. ADX (must be > 40)
             adx = self.ta.adx(high, low, close)
             trend_strength = adx[-1] > 40
+            adx_value = adx[-1]
             
             # 6. Volume (must be above 30-period average)
             vol_ma = np.mean(volume[-30:])
@@ -145,6 +148,18 @@ class SignalGenerator:
             supertrend = self.ta.supertrend(high, low, close)
             supertrend_bullish = supertrend[-1] < close[-1]
             supertrend_bearish = supertrend[-1] > close[-1]
+            
+            # Store indicator states
+            indicators = {
+                'ema': 'BULLISH' if ema_bullish else 'BEARISH' if ema_bearish else 'NEUTRAL',
+                'macd': 'BULLISH' if macd_bullish else 'BEARISH',
+                'rsi': 'BULLISH' if rsi_bullish else 'BEARISH' if rsi_bearish else 'NEUTRAL',
+                'bb': 'BULLISH' if bb_bullish else 'BEARISH' if bb_bearish else 'NEUTRAL',
+                'adx': adx_value,
+                'volume': volume_ok,
+                'stoch_rsi': 'BULLISH' if stoch_bullish else 'BEARISH' if stoch_bearish else 'NEUTRAL',
+                'supertrend': 'BULLISH' if supertrend_bullish else 'BEARISH'
+            }
             
             # Count confirmations
             bull_confirm = sum([
@@ -173,164 +188,133 @@ class SignalGenerator:
             confidence = max(bull_confirm, bear_confirm) / 8
             
             if bull_confirm == 8:
-                return 'BUY', confidence
+                return 'BUY', min(0.99, 0.7 + (confidence * 0.3)), indicators
             elif bear_confirm == 8:
-                return 'SELL', confidence
+                return 'SELL', min(0.99, 0.7 + (confidence * 0.3)), indicators
             else:
-                return 'NEUTRAL', 0
+                return 'NEUTRAL', 0, indicators
                 
         except Exception as e:
             logger.error(f"Error in check_indicators: {str(e)}")
-            return 'NEUTRAL', 0
+            return 'NEUTRAL', 0, {}
 
-    async def generate_signal(self, symbol: str) -> Optional[Dict]:
-        """Generate trading signal for a symbol"""
-        try:
-            current_time = time.time()
-            
-            # Check cooldown
-            if symbol in self.last_signals and (current_time - self.last_signals[symbol]) < self.cooldown:
-                return None
-                
-            # Check all timeframes
-            timeframes = ['5m', '15m', '30m', '1h']
-            signals = []
-            
-            for tf in timeframes:
-                df = await self.get_real_time_data(symbol, tf)
-                if df is None:
-                    continue
-                    
-                direction, confidence = await self.check_indicators(df)
-                if direction != 'NEUTRAL' and confidence >= 0.85:  # 85% confidence
-                    signals.append({
-                        'timeframe': tf,
-                        'direction': direction,
-                        'price': df['close'].iloc[-1],
-                        'confidence': confidence
-                    })
-            
-            # Require all timeframes to agree
-            if len(signals) == 4:
-                directions = [s['direction'] for s in signals]
-                if all(d == 'BUY' for d in directions):
-                    final_direction = 'BUY'
-                elif all(d == 'SELL' for d in directions):
-                    final_direction = 'SELL'
-                else:
-                    return None
-                    
-                # Use the most recent price
-                entry_price = signals[-1]['price']
-                
-                # Calculate SL/TP with strict 0.5-1.5% SL
-                sl, tp_levels, sl_pct = self.calculate_sl_tp(entry_price, final_direction)
-                
-                # Calculate risk/reward
-                if final_direction == 'BUY':
-                    risk = entry_price - sl
-                    reward = tp_levels[0] - entry_price
-                else:
-                    risk = sl - entry_price
-                    reward = entry_price - tp_levels[0]
-                    
-                risk_reward = reward / risk if risk > 0 else 0
-                
-                # Final validation
-                if risk_reward < 1.5:  # Minimum 1.5:1 RR
-                    return None
-                    
-                signal = {
-                    'symbol': symbol,
-                    'direction': final_direction,
-                    'entry': entry_price,
-                    'sl': sl,
-                    'sl_pct': sl_pct,
-                    'tp_levels': tp_levels,
-                    'risk_reward': risk_reward,
-                    'confidence': min(signals[-1]['confidence'], 0.99),
-                    'time': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-                }
-                
-                self.last_signals[symbol] = current_time
-                return signal
-                
-        except Exception as e:
-            logger.error(f"Error generating signal for {symbol}: {str(e)}")
-            
-        return None
-
-    async def scan_market(self, symbols: List[str] = None):
+    async def scan_market(self, symbols: List[str] = None) -> List[Dict]:
         """Scan market and generate trading signals"""
         if symbols is None:
-            symbols = ['BTC/USDT']  # Default symbol if none provided
-        logger.info("Starting market monitoring with strict SL (0.5-1.5%)...")
+            symbols = ['BTC/USDT']  # Default symbol
+            
+        logger.info(f"Starting market scan for {symbols}...")
+        signals = []
         
-        while True:
+        for symbol in symbols:
             try:
-                for symbol in symbols:
-                    try:
-                        signal = await self.generate_signal(symbol)
-                        if signal:
-                            # Format and send signal
-                            message = self.format_signal(signal)
-                            logger.info(f"New signal: {message}")
-                            await self.telegram.send_message(message)
-                            
-                            # Execute trade
-                            await self.portfolio.place_trade(
-                                symbol=symbol,
-                                direction=signal['direction'],
-                                entry=signal['entry'],
-                                sl=signal['sl'],
-                                tp_levels=signal['tp_levels']
-                            )
-                            
-                    except Exception as e:
-                        logger.error(f"Error processing {symbol}: {str(e)}")
+                # Check cooldown
+                current_time = time.time()
+                if symbol in self.last_signals and (current_time - self.last_signals[symbol]) < self.cooldown:
+                    continue
+                
+                # Check all timeframes
+                timeframes = ['5m', '15m', '30m', '1h']
+                tf_signals = []
+                
+                for tf in timeframes:
+                    df = await self.get_real_time_data(symbol, tf)
+                    if df is None:
                         continue
                         
-                    await asyncio.sleep(1)  # Rate limiting
-                    
-                # Wait for next cycle
-                await asyncio.sleep(60)
+                    direction, confidence, indicators = await self.check_indicators(df)
+                    if direction != 'NEUTRAL' and confidence >= 0.85:  # 85% confidence
+                        tf_signals.append({
+                            'timeframe': tf,
+                            'direction': direction,
+                            'price': df['close'].iloc[-1],
+                            'confidence': confidence,
+                            'indicators': indicators
+                        })
                 
+                # Check if all timeframes agree
+                if len(tf_signals) == 4:
+                    directions = [s['direction'] for s in tf_signals]
+                    if all(d == 'BUY' for d in directions):
+                        final_direction = 'BUY'
+                    elif all(d == 'SELL' for d in directions):
+                        final_direction = 'SELL'
+                    else:
+                        continue
+                    
+                    # Use the most recent price
+                    entry_price = tf_signals[-1]['price']
+                    
+                    # Calculate SL/TP with strict 0.5-1.5% SL
+                    sl, tp_levels, sl_pct = self.calculate_sl_tp(entry_price, final_direction)
+                    
+                    # Calculate risk/reward
+                    if final_direction == 'BUY':
+                        risk = entry_price - sl
+                        reward = tp_levels[0] - entry_price
+                    else:
+                        risk = sl - entry_price
+                        reward = entry_price - tp_levels[0]
+                        
+                    risk_reward = reward / risk if risk > 0 else 0
+                    
+                    # Final validation
+                    if risk_reward < 1.5:  # Minimum 1.5:1 RR
+                        continue
+                        
+                    signal = {
+                        'symbol': symbol,
+                        'direction': final_direction,
+                        'entry': entry_price,
+                        'sl': sl,
+                        'sl_pct': sl_pct,
+                        'tp_levels': tp_levels,
+                        'risk_reward': risk_reward,
+                        'confidence': min(tf_signals[-1]['confidence'], 0.99),
+                        'time': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
+                        'indicators': tf_signals[-1]['indicators']
+                    }
+                    
+                    signals.append(signal)
+                    self.last_signals[symbol] = current_time
+                    
             except Exception as e:
-                logger.error(f"Error in monitor_market: {str(e)}")
-                await asyncio.sleep(60)
+                logger.error(f"Error processing {symbol}: {str(e)}")
+                continue
+                
+        return signals
 
     def format_signal(self, signal: Dict) -> str:
         """Format signal for display"""
-        direction_emoji = "🟢" if signal['direction'] == 'BUY' else "🔴"
-        return f"""
+        try:
+            direction_emoji = "🟢" if signal['direction'] == 'BUY' else "🔴"
+            tp1_pct = ((signal['tp_levels'][0] / signal['entry'] - 1) * 100) if signal['direction'] == 'BUY' else ((1 - signal['tp_levels'][0] / signal['entry']) * 100)
+            
+            return f"""
 {direction_emoji} *{signal['symbol']} {signal['direction']} Signal* {direction_emoji}
 ⏰ Time: {signal['time']}
 💰 Entry: {signal['entry']:.8f}
 🛑 Stop Loss: {signal['sl']:.8f} ({signal['sl_pct']:.2f}%)
-🎯 Take Profits: 
-   TP1: {signal['tp_levels'][0]:.8f} (1.5R)
-   TP2: {signal['tp_levels'][1]:.8f} (2.0R)
-   TP3: {signal['tp_levels'][2]:.8f} (3.0R)
+🎯 Take Profits:
+   TP1: {signal['tp_levels'][0]:.8f} ({tp1_pct:.2f}%)
+   TP2: {signal['tp_levels'][1]:.8f}
+   TP3: {signal['tp_levels'][2]:.8f}
 📊 Confidence: {signal['confidence']:.2%}
 ⚖️ Risk/Reward: 1:{signal['risk_reward']:.2f}
+📈 Indicators:
+   - EMA: {signal['indicators']['ema']}
+   - MACD: {signal['indicators']['macd']}
+   - RSI: {signal['indicators']['rsi']}
+   - BB: {signal['indicators']['bb']}
+   - ADX: {signal['indicators']['adx']:.2f}
+   - Stoch RSI: {signal['indicators']['stoch_rsi']}
+   - SuperTrend: {signal['indicators']['supertrend']}
+   - Volume: {'Above Avg' if signal['indicators']['volume'] else 'Below Avg'}
 """
+        except Exception as e:
+            logger.error(f"Error formatting signal: {str(e)}")
+            return f"Signal formatting error: {str(e)}"
 
-async def main():
-    config = Config()
-    bot = StrictSLSignalGenerator(config)
-    
-    # Example symbols to monitor
-    symbols = ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'XRP/USDT']
-    
-    try:
-        await bot.monitor_market(symbols)
-    except KeyboardInterrupt:
-        logger.info("Bot stopped by user")
-    except Exception as e:
-        logger.error(f"Fatal error: {str(e)}")
-    finally:
-        await bot.binance.close()
-        logger.info("Bot shutdown complete")
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    async def close(self):
+        """Close all connections"""
+        await self.binance.close()
