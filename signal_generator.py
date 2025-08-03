@@ -23,7 +23,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("StrictSLSignalGenerator")
 
-class StrictSLSignalGenerator:
+class SignalGenerator:
     def __init__(self, config: Config):
         self.config = config
         self.binance = ccxt.binance({
