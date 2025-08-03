@@ -254,8 +254,10 @@ class SignalGenerator:
             
         return None
 
-    async def monitor_market(self, symbols: List[str]):
-        """Monitor market and execute trades"""
+    async def scan_market(self, symbols: List[str] = None):
+        """Scan market and generate trading signals"""
+        if symbols is None:
+            symbols = ['BTC/USDT']  # Default symbol if none provided
         logger.info("Starting market monitoring with strict SL (0.5-1.5%)...")
         
         while True:
