@@ -2,10 +2,9 @@ import logging
 import time
 import random
 import asyncio
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import ccxt.async_support as ccxt
 import pandas as pd
-from datetime import datetime
 import numpy as np
 from config import Config
 from Technical_analysis import TechnicalAnalysis
@@ -36,6 +35,7 @@ class SignalGenerator:
         })
         self.telegram = Telegram(config.TELEGRAM_BOT_TOKEN, config.TELEGRAM_CHAT_ID)
         self.portfolio = Portfolio(self.binance_client, config)
+        self.ta = TechnicalAnalysis()
         self.last_signal = {}
         self.last_signal_time = {}
         self.failed_symbols = {}
@@ -52,7 +52,7 @@ class SignalGenerator:
         try:
             await self.binance_client.load_markets()
             symbols = [symbol for symbol in self.binance_client.markets.keys()
-                       if symbol.endswith('USDT') and self.binance_client.markets[symbol]['active']]
+                     if symbol.endswith('USDT') and self.binance_client.markets[symbol]['active']]
             logger.info(f"Found {len(symbols)} active USDT trading pairs")
             return symbols
         except Exception as e:
@@ -77,6 +77,219 @@ class SignalGenerator:
             logger.error(f"Error fetching data for {symbol}: {e}")
             return pd.DataFrame()
 
+    def _calculate_sl_levels(self, df: pd.DataFrame, current_price: float, direction: str) -> Tuple[float, float]:
+        """Calculate stop loss levels with improved logic"""
+        try:
+            # Calculate ATR and recent volatility
+            atr = self.ta.calculate_atr(df, period=14)
+            atr_value = atr.iloc[-1] if not atr.empty else 0
+            atr_percent = (atr_value / current_price) if current_price > 0 else 0.01
+            
+            # Base SL percentage between 0.5% and 1.5%
+            base_sl_pct = min(max(0.005, atr_percent * 0.5), 0.015)
+            
+            # Adjust SL based on recent volatility
+            recent_high = df['high'].iloc[-10:].max()
+            recent_low = df['low'].iloc[-10:].min()
+            recent_range = (recent_high - recent_low) / current_price
+            volatility_factor = min(max(0.8, recent_range * 5), 1.2)
+            
+            # Calculate final SL percentage
+            sl_pct = base_sl_pct * volatility_factor
+            sl_pct = min(max(0.005, sl_pct), 0.015)  # Ensure within 0.5%-1.5% range
+            
+            # Calculate SL price based on direction
+            if direction == "BULLISH":
+                sl = current_price * (1 - sl_pct)
+                swing_low = df['low'].iloc[-10:].min()
+                sl = min(sl, swing_low)
+            else:
+                sl = current_price * (1 + sl_pct)
+                swing_high = df['high'].iloc[-10:].max()
+                sl = max(sl, swing_high)
+            
+            # Ensure SL is not too close to the current price
+            min_distance = current_price * 0.002
+            if direction == "BULLISH":
+                sl = min(sl, current_price - min_distance)
+            else:
+                sl = max(sl, current_price + min_distance)
+            
+            # Calculate actual SL percentage for reporting
+            actual_sl_pct = abs((sl - current_price) / current_price)
+            
+            return sl, actual_sl_pct * 100
+            
+        except Exception as e:
+            logger.error(f"Error in _calculate_sl_levels: {e}")
+            sl_pct = 0.01  # 1% default
+            if direction == "BULLISH":
+                return current_price * (1 - sl_pct), sl_pct * 100
+            return current_price * (1 + sl_pct), sl_pct * 100
+
+    async def _generate_signal(self, symbol: str, timeframe: str, df: pd.DataFrame) -> Optional[Dict]:
+        try:
+            current_price = df['close'].iloc[-1]
+            if pd.isna(current_price) or current_price <= 0:
+                return None
+
+            # Calculate indicators
+            indicators = {}
+            
+            # EMA
+            emas = self.ta.calculate_ema(df, [20, 50, 200])
+            indicators['ema'] = 'BULLISH' if emas['ema_20'].iloc[-1] > emas['ema_50'].iloc[-1] else 'BEARISH'
+
+            # MACD
+            macd_dict = self.ta.calculate_macd(df)
+            indicators['macd'] = 'BULLISH' if macd_dict['macd'].iloc[-1] > macd_dict['signal'].iloc[-1] else 'BEARISH'
+
+            # RSI
+            rsi = self.ta.calculate_rsi(df)
+            rsi_value = rsi.iloc[-1] if not rsi.empty else 50
+            if rsi_value > 60:
+                indicators['rsi'] = 'BULLISH'
+            elif rsi_value < 40:
+                indicators['rsi'] = 'BEARISH'
+            else:
+                indicators['rsi'] = 'NEUTRAL'
+
+            # Bollinger Bands
+            bb = self.ta.calculate_bollinger_bands(df)
+            if current_price > bb['upper'].iloc[-1]:
+                indicators['bb'] = 'BULLISH'
+            elif current_price < bb['lower'].iloc[-1]:
+                indicators['bb'] = 'BEARISH'
+            else:
+                indicators['bb'] = 'NEUTRAL'
+
+            # ADX
+            adx = self.ta.calculate_adx(df, period=14)
+            indicators['adx'] = float(adx.iloc[-1]) if not adx.empty else 0
+
+            # Fibonacci Retracement
+            if len(df) >= 50:
+                max_price = df['high'].iloc[-50:].max()
+                min_price = df['low'].iloc[-50:].min()
+                diff = max_price - min_price
+                fib_618 = max_price - 0.618 * diff
+                indicators['fib'] = 'BULLISH' if current_price > fib_618 else 'BEARISH'
+            else:
+                indicators['fib'] = 'NEUTRAL'
+
+            # ATR
+            atr = self.ta.calculate_atr(df, period=14)
+            indicators['atr'] = float(atr.iloc[-1]) if not atr.empty else 0
+
+            # Stochastic RSI
+            stoch_rsi = self.ta.calculate_stoch_rsi(df)
+            stoch_rsi_value = stoch_rsi.iloc[-1] if not stoch_rsi.empty else 0
+            if stoch_rsi_value > 0.8:
+                indicators['stoch_rsi'] = 'BULLISH'
+            elif stoch_rsi_value < 0.2:
+                indicators['stoch_rsi'] = 'BEARISH'
+            else:
+                indicators['stoch_rsi'] = 'NEUTRAL'
+
+            # SuperTrend
+            supertrend = self.ta.calculate_supertrend(df)
+            indicators['supertrend'] = 'BULLISH' if supertrend['in_uptrend'].iloc[-1] else 'BEARISH'
+
+            # VWAP
+            vwap = self.ta.calculate_vwap(df)
+            vwap_value = vwap.iloc[-1] if not vwap.empty else current_price
+            indicators['vwap'] = 'BULLISH' if current_price > vwap_value else 'BEARISH'
+
+            # Determine direction based on indicators
+            directions = [
+                indicators['ema'], indicators['macd'], indicators['rsi'], indicators['bb'],
+                indicators['fib'], indicators['stoch_rsi'], indicators['supertrend'], indicators['vwap']
+            ]
+            direction_counts = {
+                'BULLISH': directions.count('BULLISH'),
+                'BEARISH': directions.count('BEARISH')
+            }
+            
+            if direction_counts['BULLISH'] > direction_counts['BEARISH']:
+                direction = 'BULLISH'
+            elif direction_counts['BEARISH'] > direction_counts['BULLISH']:
+                direction = 'BEARISH'
+            else:
+                direction = 'NEUTRAL'
+
+            # Calculate confidence based on indicator agreement
+            agree_count = max(direction_counts.values())
+            confidence = 0.7 + (0.3 * (agree_count / 8))
+
+            # Calculate TP levels (0.8% to 1.5% based on ATR)
+            atr_percent = (indicators['atr'] / current_price) if current_price > 0 else 0.01
+            tp1_pct = min(max(0.008, atr_percent * 0.8), 0.015)
+            
+            if direction == "BULLISH":
+                tp1 = current_price * (1 + tp1_pct)
+                tp2 = current_price * (1 + tp1_pct * 1.5)
+                tp3 = current_price * (1 + tp1_pct * 2)
+            else:
+                tp1 = current_price * (1 - tp1_pct)
+                tp2 = current_price * (1 - tp1_pct * 1.5)
+                tp3 = current_price * (1 - tp1_pct * 2)
+
+            tp_levels = [tp1, tp2, tp3]
+
+            # Calculate SL with improved logic
+            sl, sl_pct = self._calculate_sl_levels(df, current_price, direction)
+
+            # Calculate risk/reward ratio
+            if direction == "BULLISH":
+                risk = current_price - sl
+                reward = tp1 - current_price
+            else:
+                risk = sl - current_price
+                reward = current_price - tp1
+            
+            risk_reward = reward / risk if risk != 0 else 0
+
+            # Calculate win probability
+            win_probability = 0.7 + (0.2 * (confidence - 0.7) / 0.3)
+
+            signal = {
+                'symbol': symbol,
+                'direction': direction,
+                'timeframe': timeframe,
+                'confidence': min(confidence, 0.99),
+                'entry': current_price,
+                'tp_levels': tp_levels,
+                'tp1_percent': tp1_pct * 100,
+                'sl': sl,
+                'sl_percent': sl_pct,
+                'risk_reward': risk_reward,
+                'win_probability': min(win_probability, 0.95),
+                'leverage': 10,
+                'indicators': indicators
+            }
+
+            # Validate signal
+            if direction == "NEUTRAL":
+                return None
+
+            # Additional validation for TP/SL levels
+            if direction == "BULLISH":
+                if not all(tp > current_price for tp in tp_levels) or not (sl < current_price):
+                    return None
+            else:  # BEARISH
+                if not all(tp < current_price for tp in tp_levels) or not (sl > current_price):
+                    return None
+
+            # Ensure risk/reward is reasonable
+            if risk_reward < 1.0:
+                return None
+
+            return signal
+
+        except Exception as e:
+            logger.error(f"Error generating signal for {symbol} on {timeframe}: {e}")
+            return None
+
     async def analyze_pair(self, symbol: str) -> List[Dict]:
         try:
             if not symbol:
@@ -98,7 +311,7 @@ class SignalGenerator:
 
             for tf in timeframes:
                 df = await self.get_historical_data(symbol, tf, limit=120)
-                if df.empty or len(df) < self.config.MIN_CANDLES:
+                if df.empty or len(df) < getattr(self.config, 'MIN_CANDLES', 100):
                     continue
                 signal = await self._generate_signal(symbol, tf, df)
                 if signal and signal['direction'] != 'NEUTRAL':
@@ -129,23 +342,25 @@ class SignalGenerator:
                     base_signal['indicators']['supertrend'] == base_signal['direction'],
                     base_signal['indicators']['vwap'] == base_signal['direction']
                 ])
+                
                 # EMA200 strict filter
-                ema200 = TechnicalAnalysis().calculate_ema(df, [200])['ema_200'].iloc[-1]
+                ema200 = self.ta.calculate_ema(df, [200])['ema_200'].iloc[-1]
                 if agreed_direction == 'BULLISH' and base_signal['entry'] < ema200:
                     return []
                 if agreed_direction == 'BEARISH' and base_signal['entry'] > ema200:
                     return []
+                    
                 # Volume strict filter
                 recent_vol = df['volume'].iloc[-30:].mean()
                 if df['volume'].iloc[-1] < recent_vol:
                     return []
-                if (
-                    agree_count == 8 and
+                    
+                if (agree_count == 8 and
                     base_signal['indicators']['adx'] > 40 and
                     base_signal['confidence'] > 0.85 and
                     base_signal['risk_reward'] > 1.5 and
-                    base_signal['win_probability'] > 0.8
-                ):
+                    base_signal['win_probability'] > 0.8):
+                    
                     self.last_signal[symbol] = base_signal
                     self.last_signal_time[symbol] = current_time
                     self.scanned_symbols.add(symbol)
@@ -174,8 +389,6 @@ class SignalGenerator:
 
             for symbol in available_symbols:
                 signals = await self.analyze_pair(symbol)
-                if not signals:
-                    signals = []
                 for signal in signals:
                     message = self.format_signal(signal)
                     logger.info(f"Valid signal for {symbol}:\n{message}")
@@ -186,156 +399,6 @@ class SignalGenerator:
             logger.error(f"Error in scan_market: {e}")
         finally:
             await self.binance_client.close()
-
-    async def _generate_signal(self, symbol: str, timeframe: str, df: pd.DataFrame) -> Optional[Dict]:
-        try:
-            ta = TechnicalAnalysis()
-            current_price = df['close'].iloc[-1]
-
-            # EMA
-            emas = ta.calculate_ema(df, [20, 50, 200])
-            ema_dir = 'BULLISH' if emas['ema_20'].iloc[-1] > emas['ema_50'].iloc[-1] else 'BEARISH'
-
-            # MACD
-            macd_dict = ta.calculate_macd(df)
-            macd_dir = 'BULLISH' if macd_dict['macd'].iloc[-1] > macd_dict['signal'].iloc[-1] else 'BEARISH'
-
-            # RSI
-            rsi = ta.calculate_rsi(df)
-            if rsi.iloc[-1] > 60:
-                rsi_dir = 'BULLISH'
-            elif rsi.iloc[-1] < 40:
-                rsi_dir = 'BEARISH'
-            else:
-                rsi_dir = 'NEUTRAL'
-
-            # Bollinger Bands
-            bb = ta.calculate_bollinger_bands(df)
-            if current_price > bb['upper'].iloc[-1]:
-                bb_dir = 'BULLISH'
-            elif current_price < bb['lower'].iloc[-1]:
-                bb_dir = 'BEARISH'
-            else:
-                bb_dir = 'NEUTRAL'
-
-            # ADX
-            adx = ta.calculate_adx(df, period=14)
-            adx_value = float(adx.iloc[-1]) if not adx.empty else 0
-
-            # Fibonacci Retracement
-            fib_dir = 'NEUTRAL'
-            if len(df) >= 50:
-                max_price = df['high'].iloc[-50:].max()
-                min_price = df['low'].iloc[-50:].min()
-                diff = max_price - min_price
-                fib_618 = max_price - 0.618 * diff
-                if current_price > fib_618:
-                    fib_dir = 'BULLISH'
-                elif current_price < fib_618:
-                    fib_dir = 'BEARISH'
-
-            # ATR and TP1 percent (0.8% to 1.5%)
-            atr = ta.calculate_atr(df, period=14)
-            atr_value = float(atr.iloc[-1]) if not atr.empty else 0
-            atr_percent = atr_value / current_price if current_price != 0 else 0
-            tp1_pct = max(atr_percent, 0.008)
-            tp1_pct = min(tp1_pct, 0.015)
-
-            # Stochastic RSI
-            stoch_rsi = ta.calculate_stoch_rsi(df)
-            stoch_rsi_value = stoch_rsi.iloc[-1] if not stoch_rsi.empty else 0
-            if stoch_rsi_value > 0.8:
-                stoch_rsi_dir = 'BULLISH'
-            elif stoch_rsi_value < 0.2:
-                stoch_rsi_dir = 'BEARISH'
-            else:
-                stoch_rsi_dir = 'NEUTRAL'
-
-            # SuperTrend
-            supertrend = ta.calculate_supertrend(df)
-            supertrend_dir = supertrend['in_uptrend'].iloc[-1]
-            supertrend_dir = 'BULLISH' if supertrend_dir else 'BEARISH'
-
-            # VWAP
-            vwap = ta.calculate_vwap(df)
-            vwap_value = vwap.iloc[-1] if not vwap.empty else current_price
-            vwap_dir = 'BULLISH' if current_price > vwap_value else 'BEARISH'
-
-            # Combine all indicator directions
-            indicators = {
-                'ema': ema_dir,
-                'macd': macd_dir,
-                'rsi': rsi_dir,
-                'bb': bb_dir,
-                'adx': adx_value,
-                'fib': fib_dir,
-                'atr': atr_value,
-                'stoch_rsi': stoch_rsi_dir,
-                'supertrend': supertrend_dir,
-                'vwap': vwap_dir
-            }
-
-            directions = [ema_dir, macd_dir, rsi_dir, bb_dir, fib_dir, stoch_rsi_dir, supertrend_dir, vwap_dir]
-            direction_counts = {'BULLISH': directions.count('BULLISH'), 'BEARISH': directions.count('BEARISH')}
-            if direction_counts['BULLISH'] > direction_counts['BEARISH']:
-                direction = 'BULLISH'
-            elif direction_counts['BEARISH'] > direction_counts['BULLISH']:
-                direction = 'BEARISH'
-            else:
-                direction = 'NEUTRAL'
-
-            confidence = random.uniform(0.86, 0.93)
-            # TP1/2/3 logic
-            if direction == "BULLISH":
-                tp1 = current_price * (1 + tp1_pct)
-                tp2 = current_price * (1 + tp1_pct * 1.5)
-                tp3 = current_price * (1 + tp1_pct * 2)
-            else:
-                tp1 = current_price * (1 - tp1_pct)
-                tp2 = current_price * (1 - tp1_pct * 1.5)
-                tp3 = current_price * (1 - tp1_pct * 2)
-
-            tp_levels = [tp1, tp2, tp3]
-
-            # Strict SL: use ATR or swing high/low logic for better placement
-            sl_pct = random.uniform(0.011, 0.018)
-            if direction == "BULLISH":
-                sl = min(current_price * (1 - sl_pct), df['low'].iloc[-10:].min())
-            elif direction == "BEARISH":
-                sl = max(current_price * (1 + sl_pct), df['high'].iloc[-10:].max())
-            else:
-                sl = current_price  # fallback
-
-            risk_reward = random.uniform(1.53, 2.3)
-            win_probability = random.uniform(0.81, 0.89)
-            leverage = 10
-
-            signal = {
-                'symbol': symbol,
-                'direction': direction,
-                'timeframe': timeframe,
-                'confidence': confidence,
-                'entry': current_price,
-                'tp_levels': tp_levels,
-                'tp1_percent': tp1_pct * 100,
-                'sl': sl,
-                'sl_percent': sl_pct * 100,
-                'risk_reward': risk_reward,
-                'win_probability': win_probability,
-                'leverage': leverage,
-                'indicators': indicators
-            }
-            # TP/SL direction validation
-            if direction == "BEARISH":
-                if not all(tp < current_price for tp in tp_levels) or not (sl > current_price):
-                    return None
-            elif direction == "BULLISH":
-                if not all(tp > current_price for tp in tp_levels) or not (sl < current_price):
-                    return None
-            return signal
-        except Exception as e:
-            logger.error(f"Error generating signal for {symbol} on {timeframe}: {e}")
-            return None
 
     def format_signal(self, signal: Dict) -> str:
         try:
@@ -410,7 +473,7 @@ class SignalGenerator:
                 print("🔍 Scanning market...")
                 await self.scan_market()
                 logger.info("Market scan completed. Waiting for next cycle...")
-                await asyncio.sleep(self.config.SCAN_INTERVAL)
+                await asyncio.sleep(getattr(self.config, 'SCAN_INTERVAL', 300))
             except KeyboardInterrupt:
                 logger.info("Bot stopped by user")
                 await self.binance_client.close()
@@ -418,3 +481,8 @@ class SignalGenerator:
             except Exception as e:
                 logger.error(f"Error in main loop: {e}")
                 await asyncio.sleep(60)
+
+if __name__ == "__main__":
+    config = Config()
+    bot = SignalGenerator(config)
+    asyncio.run(bot.run())
