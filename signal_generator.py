@@ -42,27 +42,33 @@ class SignalGenerator:
         self.max_sl_pct = 1.5  # 1.5% maximum
 
     async def get_real_time_data(self, symbol: str, timeframe: str) -> Optional[pd.DataFrame]:
-        """Fetch real-time market data with freshness check"""
-        try:
-            ohlcv = await self.binance.fetch_ohlcv(symbol, timeframe, limit=200)
-            if not ohlcv or len(ohlcv) < 100:
-                return None
-
-            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-            df.set_index('timestamp', inplace=True)
-            
-            # Verify data freshness (last candle within 2 minutes)
-            last_candle_time = df.index[-1]
-            if (pd.Timestamp.utcnow() - last_candle_time).total_seconds() > 120:
-                logger.warning(f"Stale data for {symbol} on {timeframe}")
-                return None
-                
-            return df
-            
-        except Exception as e:
-            logger.error(f"Error fetching data for {symbol}: {str(e)}")
+    """Fetch real-time market data with freshness check"""
+    try:
+        ohlcv = await self.binance.fetch_ohlcv(symbol, timeframe, limit=200)
+        if not ohlcv or len(ohlcv) < 100:
             return None
+
+        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+        
+        # Convert to timezone-naive UTC
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms').dt.tz_localize(None)
+        df.set_index('timestamp', inplace=True)
+        
+        # Get current time as timezone-naive UTC
+        current_time = pd.Timestamp.utcnow().tz_localize(None)
+        last_candle_time = df.index[-1]
+        
+        # Check data freshness (2 minutes threshold)
+        time_diff = (current_time - last_candle_time).total_seconds()
+        if time_diff > 120:
+            logger.warning(f"Stale data for {symbol} on {timeframe} - {time_diff:.0f} seconds old")
+            return None
+            
+        return df
+        
+    except Exception as e:
+        logger.error(f"Error fetching data for {symbol}: {str(e)}")
+        return None
 
     def calculate_sl_tp(self, entry_price: float, direction: str) -> Tuple[float, List[float], float]:
         """Calculate SL and TP levels with strict 0.5-1.5% SL"""
