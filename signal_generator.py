@@ -44,15 +44,15 @@ class SignalGenerator:
         self.max_sl_pct = 1.5  # 1.5% maximum
 
     async def get_real_time_data(self, symbol: str, timeframe: str) -> Optional[pd.DataFrame]:
-    """Fetch real-time market data with adjusted freshness check"""
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
+        """Fetch real-time market data with adjusted freshness check"""
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
             # Fetch OHLCV data
-            ohlcv = await self.binance.fetch_ohlcv(symbol, timeframe, limit=200)
-            if not ohlcv or len(ohlcv) < 100:
-                await asyncio.sleep(1)
-                continue
+                ohlcv = await self.binance.fetch_ohlcv(symbol, timeframe, limit=200)
+                if not ohlcv or len(ohlcv) < 100:
+                    await asyncio.sleep(1)
+                    continue
 
             # Create DataFrame
             df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
@@ -69,15 +69,16 @@ class SignalGenerator:
                 logger.warning(f"Stale data for {symbol} on {timeframe} - {time_diff:.0f}s old")
                 continue
                 
-            return df
+                return df
             
-        except Exception as e:
-            logger.warning(f"Attempt {attempt + 1} failed: {str(e)}")
-            if attempt < max_retries - 1:
-                await asyncio.sleep(1)
+except Exception as e:
+logger.warning(f"Attempt {attempt + 1} failed: {str(e)}")
+if attempt < max_retries - 1:
+    await asyncio.sleep(1)
     
     logger.error(f"Failed to fetch data for {symbol} after {max_retries} attempts")
     return None
+    
     def calculate_sl_tp(self, entry_price: float, direction: str) -> Tuple[float, List[float], float]:
         """Calculate SL and TP levels with strict 0.5-1.5% SL"""
         try:
