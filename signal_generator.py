@@ -9,6 +9,10 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import pytz
+import ccxt.async_support as ccxt
+from technical_analysis import TechnicalAnalysis
+from telegram_client import Telegram
+from portfolio import Portfolio
 
 # Configure logging
 logging.basicConfig(
@@ -38,11 +42,11 @@ class SignalGenerator:
         
         # Constants
         self.cooldown_period = 900  # 15 minutes
-        self.min_volume_usd = 100000  # $100k daily volume minimum
+        self.min_volume_usdt = 100000  # $100k daily volume minimum
         self.max_spread = 0.001  # 0.1% max spread
         self.timeframes = ['5m', '15m', '30m', '1h']  # 4 timeframes for confirmation
-        self.required_indicators = 8  # Number of indicators to confirm
-        self.min_indicators_agree = 6  # Minimum indicators that must agree
+        self.required_indicators = 8  # Total number of indicators
+        self.min_indicators_agree = 8  # Minimum indicators that must agree
         self.major_pairs = [
             'BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'ADA/USDT', 'XRP/USDT',
             'SOL/USDT', 'DOT/USDT', 'DOGE/USDT', 'AVAX/USDT', 'LTC/USDT'
@@ -90,7 +94,7 @@ class SignalGenerator:
                 'spread': spread,
                 'volume_24h': volume_24h,
                 'is_tradable': (spread < self.max_spread and 
-                               volume_24h > self.min_volume_usd),
+                               volume_24h > self.min_volume_usdt),
                 'best_bid': orderbook['bids'][0][0],
                 'best_ask': orderbook['asks'][0][0]
             }
@@ -238,6 +242,14 @@ class SignalGenerator:
             except Exception as e:
                 logger.warning(f"VWAP calculation warning: {e}")
 
+            # 10. ATR
+            try:
+                atr = self.ta.calculate_atr(df)
+                if atr is not None:
+                    indicators['atr_value'] = atr.iloc[-1] if hasattr(atr, 'iloc') else atr[-1]
+            except Exception as e:
+                logger.warning(f"ATR calculation warning: {e}")
+
         except Exception as e:
             logger.error(f"Error in _calculate_indicators: {e}")
         
@@ -273,14 +285,8 @@ class SignalGenerator:
         """Calculate TP/SL levels with proper error handling"""
         try:
             # Calculate ATR for TP1
-            atr_value = 0
-            try:
-                atr = self.ta.calculate_atr(df)
-                if atr is not None:
-                    atr_value = float(atr[-1] if hasattr(atr, '__getitem__') else atr)
-            except:
-                pass
-
+            atr_value = indicators.get('atr_value', 0)
+            
             # TP1 between 0.8% and 1.5%
             atr_pct = atr_value / current_price if current_price > 0 else 0.01
             tp1_pct = min(max(0.008, atr_pct), 0.015)
@@ -289,13 +295,13 @@ class SignalGenerator:
                 tp1 = current_price * (1 + tp1_pct)
                 tp2 = current_price * (1 + tp1_pct * 1.5)
                 tp3 = current_price * (1 + tp1_pct * 2)
-                sl_pct = random.uniform(0.011, 0.018)
+                sl_pct = random.uniform(0.011, 0.018)  # 1.1% to 1.8% SL
                 sl = min(current_price * (1 - sl_pct), df['low'].iloc[-10:].min())
             else:  # BEARISH
                 tp1 = current_price * (1 - tp1_pct)
                 tp2 = current_price * (1 - tp1_pct * 1.5)
                 tp3 = current_price * (1 - tp1_pct * 2)
-                sl_pct = random.uniform(0.011, 0.018)
+                sl_pct = random.uniform(0.011, 0.018)  # 1.1% to 1.8% SL
                 sl = max(current_price * (1 + sl_pct), df['high'].iloc[-10:].max())
                 
             return [tp1, tp2, tp3], sl, tp1_pct * 100, sl_pct * 100
@@ -308,7 +314,7 @@ class SignalGenerator:
             else:
                 return [current_price * 0.99, current_price * 0.985, current_price * 0.98], current_price * 1.01, 1.0, 1.0
 
-            def _calculate_confidence(self, indicators: Dict) -> float:
+    def _calculate_confidence(self, indicators: Dict) -> float:
         """Calculate signal confidence based on indicator agreement"""
         try:
             directions = [
@@ -339,6 +345,7 @@ class SignalGenerator:
         except Exception as e:
             logger.error(f"Error in _calculate_confidence: {e}")
             return 0.7  # Default confidence
+
     def _calculate_win_probability(self, indicators: Dict) -> float:
         """Calculate win probability based on indicators"""
         try:
