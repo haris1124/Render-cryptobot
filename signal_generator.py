@@ -4,19 +4,11 @@ import random
 import asyncio
 import json
 import collections
-from typing import Dict, List, Optional, Tuple
-import ccxt.async_support as ccxt
+from typing import Dict, List, Optional, Tuple, Any
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Any
 import pytz
-
-# Import your existing modules
-from config import Config
-from Technical_analysis import TechnicalAnalysis
-from Telegram_client import Telegram
-from portfolio import Portfolio
 
 # Configure logging
 logging.basicConfig(
@@ -30,19 +22,11 @@ logging.basicConfig(
 logger = logging.getLogger("signal_generator")
 
 class SignalGenerator:
-    def __init__(self, config: Config):
+    def __init__(self, config):
         self.config = config
-        self.binance_client = ccxt.binance({
-            'apiKey': config.BINANCE_API_KEY,
-            'secret': config.BINANCE_API_SECRET,
-            'enableRateLimit': True,
-            'options': {
-                'defaultType': 'future',
-                'adjustForTimeDifference': True
-            }
-        })
-        self.telegram = Telegram(config.TELEGRAM_BOT_TOKEN, config.TELEGRAM_CHAT_ID)
-        self.portfolio = Portfolio(self.binance_client, config)
+        self.binance_client = None
+        self.telegram = None
+        self.portfolio = None
         self.ta = TechnicalAnalysis()
         
         # State management
@@ -56,11 +40,33 @@ class SignalGenerator:
         self.cooldown_period = 900  # 15 minutes
         self.min_volume_usd = 100000  # $100k daily volume minimum
         self.max_spread = 0.001  # 0.1% max spread
-        self.timeframes = ['5m', '15m', '30m', '1h']
+        self.timeframes = ['5m', '15m', '30m', '1h']  # 4 timeframes for confirmation
+        self.required_indicators = 8  # Number of indicators to confirm
+        self.min_indicators_agree = 6  # Minimum indicators that must agree
         self.major_pairs = [
             'BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'ADA/USDT', 'XRP/USDT',
             'SOL/USDT', 'DOT/USDT', 'DOGE/USDT', 'AVAX/USDT', 'LTC/USDT'
         ]
+
+    async def initialize(self):
+        """Initialize the signal generator"""
+        try:
+            self.binance_client = ccxt.binance({
+                'apiKey': self.config.BINANCE_API_KEY,
+                'secret': self.config.BINANCE_API_SECRET,
+                'enableRateLimit': True,
+                'options': {
+                    'defaultType': 'future',
+                    'adjustForTimeDifference': True
+                }
+            })
+            self.telegram = Telegram(self.config.TELEGRAM_BOT_TOKEN, self.config.TELEGRAM_CHAT_ID)
+            self.portfolio = Portfolio(self.binance_client, self.config)
+            await self.binance_client.load_markets()
+            return True
+        except Exception as e:
+            logger.error(f"Initialization failed: {e}")
+            return False
 
     async def get_current_price(self, symbol: str) -> Optional[float]:
         """Get current price from order book"""
@@ -103,10 +109,8 @@ class SignalGenerator:
             df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
             df.set_index('timestamp', inplace=True)
-            df['symbol'] = symbol
             
-            if df['close'].isna().any() or df.empty:
-                logger.warning(f"Invalid data in DataFrame for {symbol} on {timeframe}")
+            if df.empty or len(df) < 100:  # Minimum 100 candles required
                 return pd.DataFrame()
                 
             return df
@@ -115,12 +119,325 @@ class SignalGenerator:
             logger.error(f"Error fetching data for {symbol}: {e}")
             return pd.DataFrame()
 
-    async def analyze_pair(self, symbol: str) -> List[Dict]:
-        """Analyze a trading pair across multiple timeframes"""
+    def _calculate_indicators(self, df: pd.DataFrame, current_price: float) -> Dict:
+        """Calculate all 8 technical indicators with error handling"""
+        indicators = {
+            'ema': 'NEUTRAL',
+            'macd': 'NEUTRAL',
+            'rsi': 'NEUTRAL',
+            'bb': 'NEUTRAL',
+            'adx': 0,
+            'fib': 'NEUTRAL',
+            'stoch_rsi': 'NEUTRAL',
+            'supertrend': 'NEUTRAL',
+            'vwap': 'NEUTRAL',
+            'rsi_value': 50,
+            'atr_value': 0
+        }
+        
         try:
-            if not symbol:
-                return []
+            # 1. EMA (20, 50, 200)
+            try:
+                emas = self.ta.calculate_ema(df, [20, 50, 200])
+                if isinstance(emas, dict) and 'ema_20' in emas and 'ema_50' in emas:
+                    ema_20 = emas['ema_20'].iloc[-1] if hasattr(emas['ema_20'], 'iloc') else emas['ema_20'][-1]
+                    ema_50 = emas['ema_50'].iloc[-1] if hasattr(emas['ema_50'], 'iloc') else emas['ema_50'][-1]
+                    indicators['ema'] = 'BULLISH' if ema_20 > ema_50 else 'BEARISH'
+            except Exception as e:
+                logger.warning(f"EMA calculation warning: {e}")
 
+            # 2. MACD
+            try:
+                macd = self.ta.calculate_macd(df)
+                if isinstance(macd, dict) and 'macd' in macd and 'signal' in macd:
+                    macd_line = macd['macd'].iloc[-1] if hasattr(macd['macd'], 'iloc') else macd['macd'][-1]
+                    signal_line = macd['signal'].iloc[-1] if hasattr(macd['signal'], 'iloc') else macd['signal'][-1]
+                    indicators['macd'] = 'BULLISH' if macd_line > signal_line else 'BEARISH'
+            except Exception as e:
+                logger.warning(f"MACD calculation warning: {e}")
+
+            # 3. RSI
+            try:
+                rsi = self.ta.calculate_rsi(df)
+                if not isinstance(rsi, (pd.Series, list)):
+                    rsi = [rsi] if isinstance(rsi, (int, float)) else []
+                
+                if len(rsi) > 0:
+                    rsi_value = float(rsi[-1])
+                    indicators['rsi_value'] = rsi_value
+                    indicators['rsi'] = 'BULLISH' if rsi_value > 60 else 'BEARISH' if rsi_value < 40 else 'NEUTRAL'
+            except Exception as e:
+                logger.warning(f"RSI calculation warning: {e}")
+
+            # 4. Bollinger Bands
+            try:
+                bb = self.ta.calculate_bollinger_bands(df)
+                if bb and 'upper' in bb and 'lower' in bb:
+                    upper = bb['upper'].iloc[-1] if hasattr(bb['upper'], 'iloc') else bb['upper'][-1]
+                    lower = bb['lower'].iloc[-1] if hasattr(bb['lower'], 'iloc') else bb['lower'][-1]
+                    if current_price > upper:
+                        indicators['bb'] = 'BULLISH'
+                    elif current_price < lower:
+                        indicators['bb'] = 'BEARISH'
+            except Exception as e:
+                logger.warning(f"Bollinger Bands calculation warning: {e}")
+
+            # 5. ADX
+            try:
+                adx = self.ta.calculate_adx(df)
+                if not isinstance(adx, (pd.Series, list)):
+                    adx = [adx] if isinstance(adx, (int, float)) else []
+                
+                if len(adx) > 0:
+                    indicators['adx'] = float(adx[-1])
+            except Exception as e:
+                logger.warning(f"ADX calculation warning: {e}")
+
+            # 6. Fibonacci Retracement
+            try:
+                if len(df) >= 50:
+                    high = df['high'].rolling(50).max().iloc[-1]
+                    low = df['low'].rolling(50).min().iloc[-1]
+                    diff = high - low
+                    if diff > 0:
+                        fib_618 = high - 0.618 * diff
+                        indicators['fib'] = 'BULLISH' if current_price > fib_618 else 'BEARISH'
+            except Exception as e:
+                logger.warning(f"Fibonacci calculation warning: {e}")
+
+            # 7. Stochastic RSI
+            try:
+                stoch_rsi = self.ta.calculate_stoch_rsi(df)
+                if not isinstance(stoch_rsi, (pd.Series, list)):
+                    stoch_rsi = [stoch_rsi] if isinstance(stoch_rsi, (int, float)) else []
+                
+                if len(stoch_rsi) > 0:
+                    stoch_value = float(stoch_rsi[-1])
+                    if stoch_value > 80:
+                        indicators['stoch_rsi'] = 'BULLISH'
+                    elif stoch_value < 20:
+                        indicators['stoch_rsi'] = 'BEARISH'
+            except Exception as e:
+                logger.warning(f"Stochastic RSI calculation warning: {e}")
+
+            # 8. SuperTrend
+            try:
+                supertrend = self.ta.calculate_supertrend(df)
+                if supertrend is not None and 'in_uptrend' in supertrend:
+                    uptrend = supertrend['in_uptrend'].iloc[-1] if hasattr(supertrend['in_uptrend'], 'iloc') else supertrend['in_uptrend'][-1]
+                    indicators['supertrend'] = 'BULLISH' if uptrend else 'BEARISH'
+            except Exception as e:
+                logger.warning(f"SuperTrend calculation warning: {e}")
+
+            # 9. VWAP
+            try:
+                vwap = self.ta.calculate_vwap(df)
+                if vwap is not None:
+                    vwap_value = vwap.iloc[-1] if hasattr(vwap, 'iloc') else vwap[-1]
+                    indicators['vwap'] = 'BULLISH' if current_price > vwap_value else 'BEARISH'
+            except Exception as e:
+                logger.warning(f"VWAP calculation warning: {e}")
+
+        except Exception as e:
+            logger.error(f"Error in _calculate_indicators: {e}")
+        
+        return indicators
+
+    def _get_direction(self, indicators: Dict) -> str:
+        """Determine overall direction from indicators"""
+        try:
+            directions = [
+                indicators.get('ema', 'NEUTRAL'),
+                indicators.get('macd', 'NEUTRAL'),
+                indicators.get('rsi', 'NEUTRAL'),
+                indicators.get('bb', 'NEUTRAL'),
+                indicators.get('fib', 'NEUTRAL'),
+                indicators.get('stoch_rsi', 'NEUTRAL'),
+                indicators.get('supertrend', 'NEUTRAL'),
+                indicators.get('vwap', 'NEUTRAL')
+            ]
+            
+            bull_count = directions.count('BULLISH')
+            bear_count = directions.count('BEARISH')
+            
+            if bull_count >= self.min_indicators_agree:
+                return 'BULLISH'
+            elif bear_count >= self.min_indicators_agree:
+                return 'BEARISH'
+            return 'NEUTRAL'
+        except Exception as e:
+            logger.error(f"Error in _get_direction: {e}")
+            return 'NEUTRAL'
+
+    def _calculate_levels(self, direction: str, current_price: float, df: pd.DataFrame) -> Tuple[List[float], float, float, float]:
+        """Calculate TP/SL levels with proper error handling"""
+        try:
+            # Calculate ATR for TP1
+            atr_value = 0
+            try:
+                atr = self.ta.calculate_atr(df)
+                if atr is not None:
+                    atr_value = float(atr[-1] if hasattr(atr, '__getitem__') else atr)
+            except:
+                pass
+
+            # TP1 between 0.8% and 1.5%
+            atr_pct = atr_value / current_price if current_price > 0 else 0.01
+            tp1_pct = min(max(0.008, atr_pct), 0.015)
+            
+            if direction == "BULLISH":
+                tp1 = current_price * (1 + tp1_pct)
+                tp2 = current_price * (1 + tp1_pct * 1.5)
+                tp3 = current_price * (1 + tp1_pct * 2)
+                sl_pct = random.uniform(0.011, 0.018)
+                sl = min(current_price * (1 - sl_pct), df['low'].iloc[-10:].min())
+            else:  # BEARISH
+                tp1 = current_price * (1 - tp1_pct)
+                tp2 = current_price * (1 - tp1_pct * 1.5)
+                tp3 = current_price * (1 - tp1_pct * 2)
+                sl_pct = random.uniform(0.011, 0.018)
+                sl = max(current_price * (1 + sl_pct), df['high'].iloc[-10:].max())
+                
+            return [tp1, tp2, tp3], sl, tp1_pct * 100, sl_pct * 100
+            
+        except Exception as e:
+            logger.error(f"Error in _calculate_levels: {e}")
+            # Return safe defaults
+            if direction == "BULLISH":
+                return [current_price * 1.01, current_price * 1.015, current_price * 1.02], current_price * 0.99, 1.0, 1.0
+            else:
+                return [current_price * 0.99, current_price * 0.985, current_price * 0.98], current_price * 1.01, 1.0, 1.0
+
+        def _calculate_confidence(self, indicators: Dict) -> float:
+        """Calculate signal confidence based on indicator agreement"""
+        try:
+            directions = [
+                indicators.get('ema', 'NEUTRAL'),
+                indicators.get('macd', 'NEUTRAL'),
+                indicators.get('rsi', 'NEUTRAL'),
+                indicators.get('bb', 'NEUTRAL'),
+                indicators.get('fib', 'NEUTRAL'),
+                indicators.get('stoch_rsi', 'NEUTRAL'),
+                indicators.get('supertrend', 'NEUTRAL'),
+                indicators.get('vwap', 'NEUTRAL')
+            ]
+            
+            # Count agreements
+            main_dir = 'BULLISH' if directions.count('BULLISH') > directions.count('BEARISH') else 'BEARISH'
+            agree_count = sum(1 for d in directions if d == main_dir)
+            
+            # Base confidence (0.7 to 0.95)
+            base_confidence = 0.7 + (agree_count * 0.03)
+            
+            # Adjust for ADX (stronger trend = higher confidence)
+            adx = indicators.get('adx', 0)
+            adx_factor = min(1.0, adx / 40)  # Scale with ADX
+            confidence = min(0.95, base_confidence * (1 + 0.2 * adx_factor))
+            
+            return round(confidence, 2)
+            
+        except Exception as e:
+            logger.error(f"Error in _calculate_confidence: {e}")
+            return 0.7  # Default confidence
+
+    def _calculate_win_probability(self, indicators: Dict) -> float:
+        """Calculate win probability based on indicators"""
+        try:
+            # Base probability
+            prob = 0.65
+            
+            # Increase probability with ADX (strong trend)
+            if indicators.get('adx', 0) > 40:
+                prob += 0.15
+                
+            # Increase if RSI is not overbought/oversold
+            rsi = indicators.get('rsi_value', 50)
+            if 30 < rsi < 70:
+                prob += 0.1
+                
+            return min(0.9, max(0.5, prob))
+        except Exception as e:
+            logger.error(f"Error in _calculate_win_probability: {e}")
+            return 0.65
+
+    async def _generate_signal(self, symbol: str, timeframe: str, df: pd.DataFrame, market_quality: Dict) -> Optional[Dict]:
+        """Generate trading signal with enhanced error handling"""
+        try:
+            if df.empty or len(df) < 100:  # Minimum 100 candles required
+                return None
+
+            # Get current price
+            current_price = await self.get_current_price(symbol)
+            if not current_price:
+                return None
+
+            # Calculate indicators
+            indicators = self._calculate_indicators(df, current_price)
+            
+            # Get direction (requires 6/8 indicators to agree)
+            direction = self._get_direction(indicators)
+            if direction == 'NEUTRAL':
+                return None
+
+            # Calculate TP/SL levels
+            tp_levels, sl, tp1_pct, sl_pct = self._calculate_levels(direction, current_price, df)
+
+            # Validate levels
+            if not self._validate_levels(direction, current_price, tp_levels, sl):
+                return None
+
+            # Calculate confidence and win probability
+            confidence = self._calculate_confidence(indicators)
+            win_probability = self._calculate_win_probability(indicators)
+
+            # Create signal
+            signal = {
+                'symbol': symbol,
+                'direction': direction,
+                'timeframe': timeframe,
+                'confidence': confidence,
+                'entry': current_price,
+                'tp_levels': tp_levels,
+                'tp1_percent': tp1_pct,
+                'sl': sl,
+                'sl_percent': sl_pct,
+                'risk_reward': self._calculate_risk_reward(current_price, tp_levels[0], sl),
+                'win_probability': win_probability,
+                'leverage': 10,
+                'indicators': indicators,
+                'market_quality': market_quality,
+                'timestamp': datetime.utcnow().isoformat()
+            }
+
+            return signal
+
+        except Exception as e:
+            logger.error(f"Error in _generate_signal for {symbol}: {e}")
+            return None
+
+    def _validate_levels(self, direction: str, entry: float, tp_levels: List[float], sl: float) -> bool:
+        """Validate TP/SL levels"""
+        try:
+            if direction == "BULLISH":
+                return (entry < tp_levels[0] < tp_levels[1] < tp_levels[2] and sl < entry)
+            else:  # BEARISH
+                return (entry > tp_levels[0] > tp_levels[1] > tp_levels[2] and sl > entry)
+        except Exception as e:
+            logger.error(f"Error in _validate_levels: {e}")
+            return False
+
+    def _calculate_risk_reward(self, entry: float, tp: float, sl: float) -> float:
+        """Calculate risk/reward ratio"""
+        try:
+            if entry == sl:
+                return 0
+            return abs(tp - entry) / abs(entry - sl)
+        except:
+            return 0
+
+    async def analyze_pair(self, symbol: str) -> List[Dict]:
+        """Analyze a trading pair across all timeframes"""
+        try:
             # Check cooldown
             current_time = time.time()
             if (symbol in self.last_signal_time and 
@@ -134,321 +451,39 @@ class SignalGenerator:
 
             signals = []
             directions = []
-            timeframes_checked = 0
+            valid_timeframes = 0
 
+            # Check all timeframes
             for tf in self.timeframes:
-                df = await self.get_historical_data(symbol, tf, limit=120)
-                if df.empty or len(df) < self.config.MIN_CANDLES:
+                df = await self.get_historical_data(symbol, tf, limit=1000)
+                if df.empty or len(df) < 100:
                     continue
                     
                 signal = await self._generate_signal(symbol, tf, df, market_quality)
                 if signal and signal['direction'] != 'NEUTRAL':
                     signals.append(signal)
                     directions.append(signal['direction'])
-                    timeframes_checked += 1
+                    valid_timeframes += 1
 
             # Require all timeframes to agree
-            if timeframes_checked == len(self.timeframes) and len(set(directions)) == 1:
-                direction = directions[0]
-                base_signal = max(signals, key=lambda s: s['confidence'])
+            if valid_timeframes == len(self.timeframes) and len(set(directions)) == 1:
+                # Get the signal with highest confidence
+                best_signal = max(signals, key=lambda s: s['confidence'])
                 
-                # Final validation
-                if await self.validate_signal(base_signal):
-                    self.last_signal[symbol] = base_signal
+                # Additional validation
+                if (best_signal['confidence'] >= 0.75 and 
+                    best_signal['risk_reward'] >= 1.5 and
+                    best_signal['win_probability'] >= 0.7):
+                    
+                    self.last_signal[symbol] = best_signal
                     self.last_signal_time[symbol] = current_time
-                    self.used_coins.add(symbol)
-                    return [base_signal]
+                    return [best_signal]
 
             return []
 
         except Exception as e:
             logger.error(f"Error analyzing {symbol}: {e}")
             return []
-
-    async def _generate_signal(self, symbol: str, timeframe: str, df: pd.DataFrame, 
-                             market_quality: Dict) -> Optional[Dict]:
-        """Generate trading signal with real-time validation"""
-        try:
-            # Get current price from order book
-            current_price = await self.get_current_price(symbol)
-            if not current_price:
-                return None
-
-            # Calculate indicators
-            indicators = self._calculate_indicators(df, current_price)
-            
-            # Determine direction based on indicators
-            direction = self._get_direction(indicators)
-            if direction == 'NEUTRAL':
-                return None
-
-            # Calculate TP/SL levels
-            tp_levels, sl, tp1_pct, sl_pct = self._calculate_levels(
-                direction, current_price, df
-            )
-
-            # Validate levels
-            if not self._validate_levels(direction, current_price, tp_levels, sl):
-                return None
-
-            # Calculate confidence and risk metrics
-            confidence = self._calculate_confidence(indicators)
-            risk_reward = self._calculate_risk_reward(current_price, tp_levels[0], sl)
-            win_probability = self._calculate_win_probability(indicators)
-
-            # Create signal
-            signal = {
-                'symbol': symbol,
-                'direction': direction,
-                'timeframe': timeframe,
-                'confidence': confidence,
-                'entry': current_price,
-                'tp_levels': tp_levels,
-                'tp1_percent': tp1_pct * 100,
-                'sl': sl,
-                'sl_percent': sl_pct * 100,
-                'risk_reward': risk_reward,
-                'win_probability': win_probability,
-                'leverage': 10,
-                'indicators': indicators,
-                'market_quality': market_quality,
-                'timestamp': datetime.utcnow().isoformat()
-            }
-
-            return signal
-
-        except Exception as e:
-            logger.error(f"Error generating signal for {symbol}: {e}")
-            return None
-
-    def _calculate_indicators(self, df: pd.DataFrame, current_price: float) -> Dict:
-        """Calculate all technical indicators"""
-        try:
-            # EMA
-            emas = self.ta.calculate_ema(df, [20, 50, 200])
-            ema_dir = 'BULLISH' if emas['ema_20'].iloc[-1] > emas['ema_50'].iloc[-1] else 'BEARISH'
-
-            # MACD
-            macd = self.ta.calculate_macd(df)
-            macd_dir = 'BULLISH' if macd['macd'].iloc[-1] > macd['signal'].iloc[-1] else 'BEARISH'
-
-            # RSI
-            rsi = self.ta.calculate_rsi(df)
-            rsi_value = rsi.iloc[-1] if not rsi.empty else 50
-            rsi_dir = 'BULLISH' if rsi_value > 60 else 'BEARISH' if rsi_value < 40 else 'NEUTRAL'
-
-            # Bollinger Bands
-            bb = self.ta.calculate_bollinger_bands(df)
-            bb_dir = 'NEUTRAL'
-            if not bb.empty:
-                bb_dir = 'BULLISH' if current_price > bb['upper'].iloc[-1] else 'BEARISH' if current_price < bb['lower'].iloc[-1] else 'NEUTRAL'
-
-            # ADX
-            adx_value = 0
-            try:
-                adx = self.ta.calculate_adx(df)
-                adx_value = float(adx.iloc[-1]) if not adx.empty else 0
-            except:
-                pass
-
-            # Fibonacci
-            fib_dir = self._calculate_fib_direction(df, current_price)
-
-            # ATR for volatility
-            atr_value = 0
-            try:
-                atr = self.ta.calculate_atr(df)
-                atr_value = float(atr.iloc[-1]) if not atr.empty else 0
-            except:
-                pass
-
-            # Stochastic RSI
-            stoch_rsi_dir = 'NEUTRAL'
-            try:
-                stoch_rsi = self.ta.calculate_stoch_rsi(df)
-                stoch_value = stoch_rsi.iloc[-1] if not stoch_rsi.empty else 0.5
-                stoch_rsi_dir = 'BULLISH' if stoch_value > 0.8 else 'BEARISH' if stoch_value < 0.2 else 'NEUTRAL'
-            except:
-                pass
-
-            # SuperTrend
-            supertrend_dir = 'NEUTRAL'
-            try:
-                supertrend = self.ta.calculate_supertrend(df)
-                if not supertrend.empty:
-                    supertrend_dir = 'BULLISH' if supertrend['in_uptrend'].iloc[-1] else 'BEARISH'
-            except:
-                pass
-
-            # VWAP
-            vwap_dir = 'NEUTRAL'
-            try:
-                vwap = self.ta.calculate_vwap(df)
-                if not vwap.empty:
-                    vwap_dir = 'BULLISH' if current_price > vwap.iloc[-1] else 'BEARISH'
-            except:
-                pass
-
-            return {
-                'ema': ema_dir,
-                'macd': macd_dir,
-                'rsi': rsi_dir,
-                'bb': bb_dir,
-                'adx': adx_value,
-                'fib': fib_dir,
-                'atr': atr_value,
-                'stoch_rsi': stoch_rsi_dir,
-                'supertrend': supertrend_dir,
-                'vwap': vwap_dir,
-                'rsi_value': rsi_value,
-                'atr_value': atr_value
-            }
-
-        except Exception as e:
-            logger.error(f"Error calculating indicators: {e}")
-            return {}
-
-    def _calculate_fib_direction(self, df: pd.DataFrame, current_price: float) -> str:
-        """Calculate Fibonacci retracement direction"""
-        if len(df) < 50:
-            return 'NEUTRAL'
-            
-        max_price = df['high'].iloc[-50:].max()
-        min_price = df['low'].iloc[-50:].min()
-        diff = max_price - min_price
-        
-        if diff == 0:
-            return 'NEUTRAL'
-            
-        fib_618 = max_price - 0.618 * diff
-        return 'BULLISH' if current_price > fib_618 else 'BEARISH'
-
-    def _get_direction(self, indicators: Dict) -> str:
-        """Determine overall direction from indicators"""
-        directions = [
-            indicators['ema'], indicators['macd'], indicators['rsi'],
-            indicators['bb'], indicators['fib'], indicators['stoch_rsi'],
-            indicators['supertrend'], indicators['vwap']
-        ]
-        
-        bull_count = directions.count('BULLISH')
-        bear_count = directions.count('BEARISH')
-        
-        if bull_count >= 6:
-            return 'BULLISH'
-        elif bear_count >= 6:
-            return 'BEARISH'
-        return 'NEUTRAL'
-
-    def _calculate_levels(self, direction: str, current_price: float, 
-                         df: pd.DataFrame) -> Tuple[List[float], float, float, float]:
-        """Calculate TP/SL levels with proper risk management"""
-        # Calculate ATR-based TP1 (0.8% to 1.5%)
-        atr_pct = min(max(0.008, indicators.get('atr_value', 0) / current_price), 0.015)
-        tp1_pct = atr_pct
-        
-        if direction == "BULLISH":
-            tp1 = current_price * (1 + tp1_pct)
-            tp2 = current_price * (1 + tp1_pct * 1.5)
-            tp3 = current_price * (1 + tp1_pct * 2)
-            sl_pct = random.uniform(0.011, 0.018)
-            sl = min(current_price * (1 - sl_pct), df['low'].iloc[-10:].min())
-        else:  # BEARISH
-            tp1 = current_price * (1 - tp1_pct)
-            tp2 = current_price * (1 - tp1_pct * 1.5)
-            tp3 = current_price * (1 - tp1_pct * 2)
-            sl_pct = random.uniform(0.011, 0.018)
-            sl = max(current_price * (1 + sl_pct), df['high'].iloc[-10:].max())
-            
-        return [tp1, tp2, tp3], sl, tp1_pct * 100, sl_pct * 100
-
-    def _validate_levels(self, direction: str, entry: float, 
-                        tp_levels: List[float], sl: float) -> bool:
-        """Validate that TP/SL levels make sense"""
-        if direction == "BULLISH":
-            if not (entry < tp_levels[0] < tp_levels[1] < tp_levels[2] and sl < entry):
-                return False
-        else:  # BEARISH
-            if not (entry > tp_levels[0] > tp_levels[1] > tp_levels[2] and sl > entry):
-                return False
-        return True
-
-    def _calculate_confidence(self, indicators: Dict) -> float:
-        """Calculate signal confidence based on indicator agreement"""
-        directions = [
-            indicators['ema'], indicators['macd'], indicators['rsi'],
-            indicators['bb'], indicators['fib'], indicators['stoch_rsi'],
-            indicators['supertrend'], indicators['vwap']
-        ]
-        
-        # Count agreements
-        main_dir = 'BULLISH' if directions.count('BULLISH') > directions.count('BEARISH') else 'BEARISH'
-        agree_count = sum(1 for d in directions if d == main_dir)
-        
-        # Base confidence on agreement count
-        base_confidence = 0.7 + (agree_count * 0.05)  # 0.7 to 1.1
-        
-        # Adjust for ADX (stronger trend = higher confidence)
-        adx_factor = min(1.0, indicators['adx'] / 40)  # Scale with ADX
-        confidence = min(0.95, base_confidence * (1 + 0.2 * adx_factor))
-        
-        return round(confidence, 2)
-
-    def _calculate_risk_reward(self, entry: float, tp: float, sl: float) -> float:
-        """Calculate risk/reward ratio"""
-        if entry == sl:
-            return 0
-        return abs(tp - entry) / abs(entry - sl)
-
-    def _calculate_win_probability(self, indicators: Dict) -> float:
-        """Calculate win probability based on indicators"""
-        # Base probability
-        prob = 0.65
-        
-        # Increase probability with ADX (strong trend)
-        if indicators['adx'] > 40:
-            prob += 0.15
-            
-        # Increase if RSI is not overbought/oversold
-        if 30 < indicators['rsi_value'] < 70:
-            prob += 0.1
-            
-        return min(0.9, max(0.5, prob))
-
-    async def validate_signal(self, signal: Dict) -> bool:
-        """Final validation before sending signal"""
-        try:
-            # Check if we've already sent too many signals for this pair today
-            today = datetime.utcnow().date()
-            daily_key = f"{signal['symbol']}_{today}"
-            if self.daily_signals[daily_key] >= 2:  # Max 2 signals per day
-                return False
-                
-            # Get current market conditions
-            market_quality = await self.get_market_quality(signal['symbol'])
-            if not market_quality['is_tradable']:
-                return False
-                
-            # Check if price is still valid (within 0.2% of signal price)
-            current_price = await self.get_current_price(signal['symbol'])
-            if not current_price:
-                return False
-                
-            price_diff = abs(current_price - signal['entry']) / signal['entry']
-            if price_diff > 0.002:  # 0.2% threshold
-                return False
-                
-            # Check if spread is still acceptable
-            if market_quality['spread'] > self.max_spread:
-                return False
-                
-            # All checks passed
-            self.daily_signals[daily_key] += 1
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error validating signal: {e}")
-            return False
 
     def format_signal(self, signal: Dict) -> str:
         """Format signal for Telegram"""
@@ -489,16 +524,15 @@ TP3: ${tp_levels[2]:.8f}
 - BB: {indicators.get('bb', 'N/A')}
 - ADX: {indicators.get('adx', 0):.2f}
 - FIB: {indicators.get('fib', 'N/A')}
-- ATR: {indicators.get('atr_value', 0):.8f}
 - Stoch RSI: {indicators.get('stoch_rsi', 'N/A')}
 - SuperTrend: {indicators.get('supertrend', 'N/A')}
 - VWAP: {indicators.get('vwap', 'N/A')}
 
 💹 Market Quality:
-- Spread: {market_quality.get('spread', 0)*100:.4f}%
-- 24h Volume: ${market_quality.get('volume_24h', 0):,.2f}
-- Best Bid: {market_quality.get('best_bid', 0):.8f}
-- Best Ask: {market_quality.get('best_ask', 0):.8f}
+- Spread: {signal['market_quality'].get('spread', 0)*100:.4f}%
+- 24h Volume: ${signal['market_quality'].get('volume_24h', 0):,.2f}
+- Best Bid: {signal['market_quality'].get('best_bid', 0):.8f}
+- Best Ask: {signal['market_quality'].get('best_ask', 0):.8f}
 
 #Crypto #TradingSignal #{signal['direction']}"""
             
@@ -514,8 +548,15 @@ TP3: ${tp_levels[2]:.8f}
             while True:
                 try:
                     logger.info("Starting market scan...")
-                    symbols = await self.get_available_symbols()
                     
+                    # Get available symbols
+                    symbols = await self.get_available_symbols()
+                    if not symbols:
+                        logger.warning("No symbols available for trading")
+                        await asyncio.sleep(60)
+                        continue
+                    
+                    # Process each symbol
                     for symbol in symbols:
                         try:
                             signals = await self.analyze_pair(symbol)
@@ -576,10 +617,46 @@ TP3: ${tp_levels[2]:.8f}
         except Exception as e:
             logger.error(f"Error executing signal: {e}")
 
+    async def validate_signal(self, signal: Dict) -> bool:
+        """Final validation before sending signal"""
+        try:
+            # Check daily limit
+            today = datetime.utcnow().date()
+            daily_key = f"{signal['symbol']}_{today}"
+            if self.daily_signals[daily_key] >= 2:  # Max 2 signals per day
+                return False
+                
+            # Get current market conditions
+            market_quality = await self.get_market_quality(signal['symbol'])
+            if not market_quality['is_tradable']:
+                return False
+                
+            # Check if price is still valid (within 0.2% of signal price)
+            current_price = await self.get_current_price(signal['symbol'])
+            if not current_price:
+                return False
+                
+            price_diff = abs(current_price - signal['entry']) / signal['entry']
+            if price_diff > 0.002:  # 0.2% threshold
+                return False
+                
+            # Check if spread is still acceptable
+            if market_quality['spread'] > self.max_spread:
+                return False
+                
+            # All checks passed
+            self.daily_signals[daily_key] += 1
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validating signal: {e}")
+            return False
+
     async def cleanup(self):
         """Clean up resources"""
         try:
-            await self.binance_client.close()
+            if self.binance_client:
+                await self.binance_client.close()
         except:
             pass
 
@@ -588,7 +665,11 @@ TP3: ${tp_levels[2]:.8f}
         logger.info("Starting trading bot...")
         try:
             # Initialize
-            await self.binance_client.load_markets()
+            if not await self.initialize():
+                logger.error("Failed to initialize bot")
+                return
+                
+            logger.info("Bot initialized successfully")
             
             # Start market scanner
             scanner = asyncio.create_task(self.scan_market())
@@ -605,12 +686,17 @@ TP3: ${tp_levels[2]:.8f}
 
 # Example usage
 if __name__ == "__main__":
-    config = Config()  # Your config class
-    bot = SignalGenerator(config)
+    import asyncio
+    from config import Config
     
-    try:
-        asyncio.run(bot.run())
-    except KeyboardInterrupt:
-        logger.info("Bot stopped by user")
-    except Exception as e:
-        logger.error(f"Fatal error: {e}")
+    async def main():
+        config = Config()  # Your config class
+        bot = SignalGenerator(config)
+        try:
+            await bot.run()
+        except KeyboardInterrupt:
+            logger.info("Bot stopped by user")
+        except Exception as e:
+            logger.error(f"Fatal error: {e}")
+
+    asyncio.run(main())
