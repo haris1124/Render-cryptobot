@@ -9,10 +9,10 @@ class Config:
         self.CAPITAL = float(os.getenv('CAPITAL', 10000))
         self.RISK_PER_TRADE = float(os.getenv('RISK_PER_TRADE', 0.01))
         self.MAX_LEVERAGE = int(os.getenv('MAX_LEVERAGE', 40))
-        self.MIN_RISK_REWARD = float(os.getenv('MIN_RISK_REWARD', 0.25))
+        self.MIN_RISK_REWARD = float(os.getenv('MIN_RISK_REWARD', 1.2))
         self.MIN_WIN_PERCENTAGE = float(os.getenv('MIN_WIN_PERCENTAGE', 0.2))
         self.MAX_PAIRS_PER_CYCLE = int(os.getenv('MAX_PAIRS_PER_CYCLE', 50))
-        self.SCAN_INTERVAL = int(os.getenv('SCAN_INTERVAL', 120))
+        self.SCAN_INTERVAL = int(os.getenv('SCAN_INTERVAL', 60))
         self.MIN_CANDLES = int(os.getenv('MIN_CANDLES', 40))
         self.MAX_VOLATILITY = float(os.getenv('MAX_VOLATILITY', 0.15))
         self.MAX_DRAWDOWN_PERCENT = float(os.getenv('MAX_DRAWDOWN_PERCENT', 20))
@@ -20,5 +20,5 @@ class Config:
         self.MIN_RISK_REWARD = float(os.getenv('MIN_RISK_REWARD', 1.7))       # Minimum risk/reward ratio
         self.MIN_WIN_PROBABILITY = float(os.getenv('MIN_WIN_PROBABILITY', 0.7)) # Minimum win probability
         self.MIN_TREND_STRENGTH = float(os.getenv('MIN_TREND_STRENGTH', 25))  # Minimum ADX/trend strength
-        self.MIN_INDICATORS = int(os.getenv('MIN_INDICATORS', 4))             # Minimum indicators in agreement
+        self.MIN_INDICATORS = int(os.getenv('MIN_INDICATORS', 6))             # Minimum indicators in agreement
         self.MAX_DAILY_LOSS_PERCENT = float(os.getenv('MAX_DAILY_LOSS_PERCENT', 5))
