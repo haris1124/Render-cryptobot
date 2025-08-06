@@ -219,7 +219,7 @@ class SignalGenerator:
 
             # Calculate confidence based on indicator agreement
             agree_count = max(direction_counts.values())
-            confidence = 0.7 + (0.3 * (agree_count / 8))
+            confidence = 0.65 + (0.3 * (agree_count / 8))
 
             # Calculate TP levels (0.8% to 1.5% based on ATR)
             atr_percent = (indicators['atr'] / current_price) if current_price > 0 else 0.01
@@ -319,11 +319,11 @@ class SignalGenerator:
                     directions.append(signal['direction'])
 
             # Require all 4 timeframes to agree on the same direction
-            if len(signals) == 4:
+            if len(signals) >= 3:
                 dir_counts = {'BULLISH': directions.count('BULLISH'), 'BEARISH': directions.count('BEARISH')}
-                if dir_counts['BULLISH'] == 4:
+                if dir_counts['BULLISH'] >= 3:
                     agreed_direction = 'BULLISH'
-                elif dir_counts['BEARISH'] == 4:
+                elif dir_counts['BEARISH']>= 3:
                     agreed_direction = 'BEARISH'
                 else:
                     return []
@@ -356,10 +356,10 @@ class SignalGenerator:
                     return []
                     
                 if (agree_count == 8 and
-                    base_signal['indicators']['adx'] > 40 and
-                    base_signal['confidence'] > 0.85 and
-                    base_signal['risk_reward'] > 1.5 and
-                    base_signal['win_probability'] > 0.8):
+                    base_signal['indicators']['adx'] > 35 and
+                    base_signal['confidence'] > 0.8 and
+                    base_signal['risk_reward'] > 1.3 and
+                    base_signal['win_probability'] > 0.7):
                     
                     self.last_signal[symbol] = base_signal
                     self.last_signal_time[symbol] = current_time
