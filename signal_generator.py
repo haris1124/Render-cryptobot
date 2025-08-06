@@ -219,7 +219,8 @@ class SignalGenerator:
 
             # Calculate confidence based on indicator agreement
             agree_count = max(direction_counts.values())
-            confidence = 0.65 + (0.3 * (agree_count / 8))
+            confidence = 0.65 + (0.4 * (agree_count / 6))
+            confidence = min(confidence, 0.95)
 
             # Calculate TP levels (0.8% to 1.5% based on ATR)
             atr_percent = (indicators['atr'] / current_price) if current_price > 0 else 0.01
@@ -355,9 +356,9 @@ class SignalGenerator:
                 if df['volume'].iloc[-1] < 0.3 * recent_vol:
                     return []
                     
-                if (agree_count == 8 and
+                if (agree_count == 6 and
                     base_signal['indicators']['adx'] > 35 and
-                    base_signal['confidence'] > 0.8 and
+                    base_signal['confidence'] > 0.7 and
                     base_signal['risk_reward'] > 1.3 and
                     base_signal['win_probability'] > 0.7):
                     
