@@ -351,8 +351,8 @@ class SignalGenerator:
                     return []
                     
                 # Volume strict filter
-                recent_vol = df['volume'].iloc[-30:].mean()
-                if df['volume'].iloc[-1] < recent_vol:
+                recent_vol = df['volume'].iloc[-40:].mean()
+                if df['volume'].iloc[-1] < 0.3 * recent_vol:
                     return []
                     
                 if (agree_count == 8 and
