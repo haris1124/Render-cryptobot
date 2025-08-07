@@ -272,7 +272,7 @@ class SignalGenerator:
                 logger.info(f"Skipping {symbol} due to signal cooldown")
                 return []
 
-            timeframes = ['15m', '14', '4h', '1d']
+            timeframes = ['5m','15m','30m', '1h', '4h', '1d']
             signals = []
             directions = []
 
@@ -285,11 +285,11 @@ class SignalGenerator:
                     signals.append(signal)
                     directions.append(signal['direction'])
 
-            if len(signals) >= 3:
+            if len(signals) >= 5:
                 dir_counts = {'BULLISH': directions.count('BULLISH'), 'BEARISH': directions.count('BEARISH')}
-                if dir_counts['BULLISH'] >= 3:
+                if dir_counts['BULLISH'] >= 5:
                     agreed_direction = 'BULLISH'
-                elif dir_counts['BEARISH'] >= 3:
+                elif dir_counts['BEARISH'] >= 5:
                     agreed_direction = 'BEARISH'
                 else:
                     return []
