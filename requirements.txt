@@ -8,4 +8,4 @@ asyncio
 fastapi
 uvicorn
 tenacity==8.5.0
-pip install tenacity
+
