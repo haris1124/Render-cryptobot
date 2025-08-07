@@ -272,7 +272,7 @@ class SignalGenerator:
                 logger.info(f"Skipping {symbol} due to signal cooldown")
                 return []
 
-            timeframes = ['15m', '1h', '4h', '1d']
+            timeframes = ['15m', '14', '4h', '1d']
             signals = []
             directions = []
 
