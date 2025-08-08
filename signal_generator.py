@@ -285,11 +285,11 @@ class SignalGenerator:
                     signals.append(signal)
                     directions.append(signal['direction'])
 
-            if len(signals) >= 3:
+            if len(signals) >= 2:
                 dir_counts = {'BULLISH': directions.count('BULLISH'), 'BEARISH': directions.count('BEARISH')}
-                if dir_counts['BULLISH'] >= 3:
+                if dir_counts['BULLISH'] >= 2:
                     agreed_direction = 'BULLISH'
-                elif dir_counts['BEARISH'] >= 3:
+                elif dir_counts['BEARISH'] >= 2:
                     agreed_direction = 'BEARISH'
                 else:
                     return []
