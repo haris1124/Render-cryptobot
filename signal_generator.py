@@ -86,7 +86,7 @@ class SignalGenerator:
             atr_percent = (atr_value / current_price) if current_price > 0 else 0.01
             
             # Base SL percentage between 0.5% and 1.5%
-            base_sl_pct = min(max(0.005, atr_percent * 0.5), 0.015)
+            base_sl_pct = min(max(0.009, atr_percent * 0.9), 0.02)
             
             # Adjust SL based on recent volatility
             recent_high = df['high'].iloc[-10:].max()
@@ -96,7 +96,7 @@ class SignalGenerator:
             
             # Calculate final SL percentage
             sl_pct = base_sl_pct * volatility_factor
-            sl_pct = min(max(0.005, sl_pct), 0.015)  # Ensure within 0.5%-1.5% range
+            sl_pct = min(max(0.009, sl_pct), 0.02)  # Ensure within 0.5%-1.5% range
             
             # Calculate SL price based on direction
             if direction == "BULLISH":
@@ -320,11 +320,11 @@ class SignalGenerator:
                     directions.append(signal['direction'])
 
             # Require all 4 timeframes to agree on the same direction
-            if len(signals) >= 3:
+            if len(signals) >= 2:
                 dir_counts = {'BULLISH': directions.count('BULLISH'), 'BEARISH': directions.count('BEARISH')}
-                if dir_counts['BULLISH'] >= 3:
+                if dir_counts['BULLISH'] >= 2:
                     agreed_direction = 'BULLISH'
-                elif dir_counts['BEARISH']>= 3:
+                elif dir_counts['BEARISH']>= 2:
                     agreed_direction = 'BEARISH'
                 else:
                     return []
@@ -356,8 +356,8 @@ class SignalGenerator:
                 if df['volume'].iloc[-1] < 0.2 * recent_vol:
                     return []
                     
-                if (agree_count == 6 and
-                    base_signal['indicators']['adx'] > 35 and
+                if (agree_count == 4 and
+                    base_signal['indicators']['adx'] > 25 and
                     base_signal['confidence'] > 0.7 and
                     base_signal['risk_reward'] > 1.3 and
                     base_signal['win_probability'] > 0.7):
