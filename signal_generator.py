@@ -292,6 +292,8 @@ class SignalGenerator:
             return None
 
     async def analyze_pair(self, symbol: str) -> List[Dict]:
+        """Analyze a trading pair and return signals if conditions are met"""
+        logger.info(f"Analyzing {symbol}...")  # Add this line here
         try:
             if not symbol:
                 logger.warning("Invalid symbol provided")
