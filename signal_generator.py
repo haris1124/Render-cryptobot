@@ -1,11 +1,11 @@
 import logging
 import time
 import asyncio
-from typing import Dict, List, Optional, Tuple
-import ccxt.async_support as ccxt
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+import ccxt.async_support as ccxt
+from typing import Dict, List, Optional, Tuple
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(
@@ -17,6 +17,144 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger("signal_generator")
+
+class TechnicalAnalysis:
+    """Technical analysis indicators"""
+    
+    @staticmethod
+    def calculate_ema(df, periods: List[int]) -> Dict:
+        """Calculate Exponential Moving Averages"""
+        return {f'ema_{period}': df['close'].ewm(span=period, adjust=False).mean() for period in periods}
+    
+    @staticmethod
+    def calculate_macd(df, fast: int = 12, slow: int = 26, signal: int = 9) -> Dict:
+        """Calculate MACD indicator"""
+        ema_fast = df['close'].ewm(span=fast, adjust=False).mean()
+        ema_slow = df['close'].ewm(span=slow, adjust=False).mean()
+        macd = ema_fast - ema_slow
+        signal_line = macd.ewm(span=signal, adjust=False).mean()
+        hist = macd - signal_line
+        return {'macd': macd, 'signal': signal_line, 'hist': hist}
+    
+    @staticmethod
+    def calculate_rsi(df, period: int = 14) -> pd.Series:
+        """Calculate Relative Strength Index"""
+        delta = df['close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+        rs = gain / loss
+        return 100 - (100 / (1 + rs))
+    
+    @staticmethod
+    def calculate_bollinger_bands(df, period: int = 20, std_dev: int = 2) -> Dict:
+        """Calculate Bollinger Bands"""
+        middle_band = df['close'].rolling(window=period).mean()
+        std = df['close'].rolling(window=period).std()
+        upper_band = middle_band + (std * std_dev)
+        lower_band = middle_band - (std * std_dev)
+        return {'upper': upper_band, 'middle': middle_band, 'lower': lower_band}
+    
+    @staticmethod
+    def calculate_adx(df, period: int = 14) -> pd.Series:
+        """Calculate Average Directional Index"""
+        high, low, close = df['high'], df['low'], df['close']
+        
+        # Calculate +DM and -DM
+        up = high.diff()
+        down = low.diff() * -1
+        plus_dm = up.where((up > down) & (up > 0), 0)
+        minus_dm = down.where((down > up) & (down > 0), 0)
+        
+        # Calculate True Range
+        tr1 = high - low
+        tr2 = (high - close.shift()).abs()
+        tr3 = (low - close.shift()).abs()
+        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+        
+        # Smooth the calculations
+        tr_smooth = tr.rolling(window=period).sum()
+        plus_dm_smooth = plus_dm.rolling(window=period).sum()
+        minus_dm_smooth = minus_dm.rolling(window=period).sum()
+        
+        # Calculate +DI and -DI
+        plus_di = 100 * (plus_dm_smooth / tr_smooth)
+        minus_di = 100 * (minus_dm_smooth / tr_smooth)
+        
+        # Calculate DX and ADX
+        dx = 100 * ((plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, 1e-10))
+        return dx.rolling(window=period).mean()
+    
+    @staticmethod
+    def calculate_atr(df, period: int = 14) -> pd.Series:
+        """Calculate Average True Range"""
+        high, low, close = df['high'], df['low'], df['close']
+        tr1 = high - low
+        tr2 = (high - close.shift()).abs()
+        tr3 = (low - close.shift()).abs()
+        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+        return tr.rolling(window=period).mean()
+    
+    @staticmethod
+    def calculate_supertrend(df, period: int = 10, multiplier: int = 3) -> Dict:
+        """Calculate SuperTrend indicator"""
+        high, low, close = df['high'], df['low'], df['close']
+        
+        # Calculate ATR
+        tr1 = high - low
+        tr2 = (high - close.shift()).abs()
+        tr3 = (low - close.shift()).abs()
+        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+        atr = tr.rolling(window=period).mean()
+        
+        # Calculate basic upper and lower bands
+        hl2 = (high + low) / 2
+        upper_band = hl2 + (multiplier * atr)
+        lower_band = hl2 - (multiplier * atr)
+        
+        # Initialize SuperTrend
+        supertrend = pd.Series(index=df.index)
+        direction = pd.Series(1, index=df.index)
+        
+        for i in range(1, len(df)):
+            if close.iloc[i] > upper_band.iloc[i-1]:
+                direction.iloc[i] = 1
+            elif close.iloc[i] < lower_band.iloc[i-1]:
+                direction.iloc[i] = -1
+            else:
+                direction.iloc[i] = direction.iloc[i-1]
+                
+                if direction.iloc[i] == 1 and lower_band.iloc[i] < lower_band.iloc[i-1]:
+                    lower_band.iloc[i] = lower_band.iloc[i-1]
+                if direction.iloc[i] == -1 and upper_band.iloc[i] > upper_band.iloc[i-1]:
+                    upper_band.iloc[i] = upper_band.iloc[i-1]
+            
+            if direction.iloc[i] == 1:
+                supertrend.iloc[i] = lower_band.iloc[i]
+            else:
+                supertrend.iloc[i] = upper_band.iloc[i]
+        
+        return {'supertrend': supertrend, 'direction': direction}
+    
+    @staticmethod
+    def calculate_vwap(df) -> pd.Series:
+        """Calculate Volume Weighted Average Price"""
+        tp = (df['high'] + df['low'] + df['close']) / 3
+        return (tp * df['volume']).cumsum() / df['volume'].cumsum()
+    
+    @staticmethod
+    def calculate_stoch_rsi(df, period: int = 14, smooth_k: int = 3, smooth_d: int = 3) -> pd.Series:
+        """Calculate Stochastic RSI"""
+        # Calculate RSI
+        delta = df['close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+        
+        # Calculate Stochastic RSI
+        stoch_rsi = (rsi - rsi.rolling(period).min()) / (rsi.rolling(period).max() - rsi.rolling(period).min() + 1e-10)
+        stoch_rsi_k = stoch_rsi.rolling(smooth_k).mean() * 100
+        return stoch_rsi_k
 
 class SignalGenerator:
     def __init__(self, config):
@@ -31,20 +169,12 @@ class SignalGenerator:
                 'adjustForTimeDifference': True
             }
         })
-        self.telegram = getattr(config, 'TELEGRAM', None)
-        self.portfolio = getattr(config, 'PORTFOLIO', None)
         self.ta = TechnicalAnalysis()
         self.last_signal = {}
         self.last_signal_time = {}
-        self.failed_symbols = {}
-        self.warned_symbols = set()
         self.scanned_symbols = set()
         self.used_coins = set()
         self.cooldown_period = 900  # 15 minutes
-        self.major_pairs = [
-            'BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'XRP/USDT',
-            'ADA/USDT', 'AVAX/USDT', 'DOT/USDT', 'LINK/USDT', 'MATIC/USDT'
-        ]
         self.timeframes = ['5m', '15m', '30m', '1h']
         self.min_volume_btc = 10  # Minimum 10 BTC volume in last 24h
 
@@ -64,11 +194,62 @@ class SignalGenerator:
             logger.error(f"Error fetching data for {symbol}: {str(e)}")
             return pd.DataFrame()
 
+    def _calculate_indicators(self, df: pd.DataFrame) -> Dict:
+        """Calculate all technical indicators"""
+        try:
+            indicators = {}
+            
+            # 1. Moving Averages
+            emas = self.ta.calculate_ema(df, [20, 50, 200])
+            indicators.update(emas)
+            
+            # 2. MACD
+            macd = self.ta.calculate_macd(df)
+            indicators['macd'] = macd['macd'].iloc[-1]
+            indicators['macd_signal'] = macd['signal'].iloc[-1]
+            indicators['macd_hist'] = macd['hist'].iloc[-1]
+            
+            # 3. RSI
+            indicators['rsi'] = self.ta.calculate_rsi(df).iloc[-1]
+            
+            # 4. Bollinger Bands
+            bb = self.ta.calculate_bollinger_bands(df)
+            indicators['bb_upper'] = bb['upper'].iloc[-1]
+            indicators['bb_middle'] = bb['middle'].iloc[-1]
+            indicators['bb_lower'] = bb['lower'].iloc[-1]
+            
+            # 5. ADX
+            indicators['adx'] = self.ta.calculate_adx(df).iloc[-1]
+            
+            # 6. ATR
+            indicators['atr'] = self.ta.calculate_atr(df).iloc[-1]
+            
+            # 7. Volume
+            indicators['volume'] = df['volume'].iloc[-1]
+            indicators['volume_ma'] = df['volume'].rolling(20).mean().iloc[-1]
+            
+            # 8. SuperTrend
+            supertrend = self.ta.calculate_supertrend(df)
+            indicators['supertrend'] = supertrend['supertrend'].iloc[-1]
+            indicators['supertrend_direction'] = supertrend['direction'].iloc[-1]
+            
+            # 9. VWAP
+            indicators['vwap'] = self.ta.calculate_vwap(df).iloc[-1]
+            
+            # 10. Stochastic RSI
+            indicators['stoch_rsi'] = self.ta.calculate_stoch_rsi(df).iloc[-1]
+            
+            return indicators
+            
+        except Exception as e:
+            logger.error(f"Error in _calculate_indicators: {str(e)}")
+            return {}
+
     def _calculate_sl_levels(self, df: pd.DataFrame, current_price: float, direction: str) -> Tuple[float, float]:
-        """Calculate dynamic stop loss between 1% and 2%"""
+        """Calculate stop loss levels with improved logic"""
         try:
             # Calculate ATR and recent volatility
-            atr = self.ta.calculate_atr(df, period=14)
+            atr = self.ta.calculate_atr(df)
             atr_value = atr.iloc[-1] if not atr.empty else 0
             atr_percent = (atr_value / current_price) if current_price > 0 else 0.01
             
@@ -123,13 +304,13 @@ class SignalGenerator:
             if pd.isna(current_price) or current_price <= 0:
                 return None
 
-            # Calculate indicators
-            indicators = self._calculate_indicators(df, current_price)
+            # Calculate all indicators
+            indicators = self._calculate_indicators(df)
             if not indicators:
                 return None
 
-            # Determine direction based on indicators
-            direction = self._determine_direction(indicators)
+            # Determine signal direction
+            direction = self._determine_direction(indicators, current_price)
             if direction == "NEUTRAL":
                 return None
 
@@ -144,26 +325,181 @@ class SignalGenerator:
 
             signal = {
                 'symbol': symbol,
-                'direction': direction,
                 'timeframe': timeframe,
-                'confidence': min(confidence, 0.99),
+                'direction': direction,
                 'entry': current_price,
-                'tp_levels': tp_levels,
-                'tp1_percent': tp1_pct * 100,
                 'sl': sl,
                 'sl_percent': sl_pct,
+                'tp_levels': tp_levels,
+                'tp1_percent': tp1_pct * 100,
                 'risk_reward': risk_reward,
+                'confidence': min(confidence, 0.99),
                 'win_probability': min(win_probability, 0.95),
                 'leverage': 10,
                 'indicators': indicators,
                 'timestamp': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
             }
 
+            # Validate signal
+            if not self._validate_signal(signal):
+                return None
+
             return signal
 
         except Exception as e:
             logger.error(f"Error in _generate_signal for {symbol}: {str(e)}")
             return None
+
+    def _determine_direction(self, indicators: Dict, current_price: float) -> str:
+        """Determine trade direction based on indicators"""
+        try:
+            # Count bullish and bearish signals
+            bullish = 0
+            bearish = 0
+            
+            # EMA Cross
+            if indicators['ema_20'] > indicators['ema_50'] > indicators['ema_200']:
+                bullish += 1
+            elif indicators['ema_20'] < indicators['ema_50'] < indicators['ema_200']:
+                bearish += 1
+                
+            # MACD
+            if indicators['macd'] > indicators['macd_signal']:
+                bullish += 1
+            else:
+                bearish += 1
+                
+            # RSI
+            if indicators['rsi'] > 50:
+                bullish += 1
+            else:
+                bearish += 1
+                
+            # Price vs VWAP
+            if current_price > indicators['vwap']:
+                bullish += 1
+            else:
+                bearish += 1
+                
+            # SuperTrend
+            if indicators['supertrend_direction'] == 1:
+                bullish += 1
+            else:
+                bearish += 1
+                
+            # Determine final direction
+            if bullish >= 3 and indicators['adx'] > 25:
+                return "BULLISH"
+            elif bearish >= 3 and indicators['adx'] > 25:
+                return "BEARISH"
+            return "NEUTRAL"
+            
+        except Exception as e:
+            logger.error(f"Error in _determine_direction: {str(e)}")
+            return "NEUTRAL"
+
+    def _calculate_tp_levels(self, entry: float, direction: str, sl: float, sl_pct: float) -> Tuple[List[float], float]:
+        """Calculate take profit levels"""
+        try:
+            # Calculate TP1 based on 1:1.5 risk:reward
+            if direction == "BULLISH":
+                tp1 = entry + (1.5 * (entry - sl))
+                tp2 = entry + (2.0 * (entry - sl))
+                tp3 = entry + (3.0 * (entry - sl))
+            else:
+                tp1 = entry - (1.5 * (sl - entry))
+                tp2 = entry - (2.0 * (sl - entry))
+                tp3 = entry - (3.0 * (sl - entry))
+                
+            tp1_pct = abs((tp1 - entry) / entry)
+            return [tp1, tp2, tp3], tp1_pct
+            
+        except Exception as e:
+            logger.error(f"Error in _calculate_tp_levels: {str(e)}")
+            if direction == "BULLISH":
+                return [entry * 1.015, entry * 1.03, entry * 1.045], 1.5
+            else:
+                return [entry * 0.985, entry * 0.97, entry * 0.955], 1.5
+
+    def _calculate_risk_reward(self, entry: float, sl: float, tp: float, direction: str) -> float:
+        """Calculate risk to reward ratio"""
+        try:
+            if direction == "BULLISH":
+                risk = entry - sl
+                reward = tp - entry
+            else:
+                risk = sl - entry
+                reward = entry - tp
+                
+            return reward / max(risk, 1e-10)  # Avoid division by zero
+        except Exception as e:
+            logger.error(f"Error in _calculate_risk_reward: {str(e)}")
+            return 1.0
+
+    def _calculate_confidence(self, indicators: Dict, direction: str) -> float:
+        """Calculate signal confidence score (0-1)"""
+        try:
+            confidence = 0.5  # Base confidence
+            
+            # ADX strength (0-0.2)
+            adx_strength = min(indicators['adx'] / 50.0, 1.0) * 0.2
+            confidence += adx_strength
+            
+            # Volume confirmation (0-0.15)
+            volume_ratio = indicators['volume'] / max(indicators['volume_ma'], 1)
+            volume_boost = min(max(0, (volume_ratio - 1.0) * 0.3), 0.15)
+            confidence += volume_boost
+            
+            # RSI confirmation (0-0.15)
+            if (direction == "BULLISH" and 30 < indicators['rsi'] < 70) or \
+               (direction == "BEARISH" and 30 < indicators['rsi'] < 70):
+                confidence += 0.1
+                
+            # MACD confirmation (0-0.1)
+            if (direction == "BULLISH" and indicators['macd_hist'] > 0) or \
+               (direction == "BEARISH" and indicators['macd_hist'] < 0):
+                confidence += 0.1
+                
+            # SuperTrend confirmation (0-0.1)
+            if (direction == "BULLISH" and indicators['supertrend_direction'] == 1) or \
+               (direction == "BEARISH" and indicators['supertrend_direction'] == -1):
+                confidence += 0.1
+                
+            return min(max(confidence, 0.5), 0.99)  # Keep between 0.5 and 0.99
+            
+        except Exception as e:
+            logger.error(f"Error in _calculate_confidence: {str(e)}")
+            return 0.7
+
+    def _validate_signal(self, signal: Dict) -> bool:
+        """Validate signal meets all criteria"""
+        try:
+            # Check minimum risk/reward
+            if signal['risk_reward'] < 1.3:
+                return False
+                
+            # Check minimum confidence
+            if signal['confidence'] < 0.7:
+                return False
+                
+            # Check ADX strength
+            if signal['indicators']['adx'] < 25:
+                return False
+                
+            # Check volume
+            if signal['indicators']['volume'] < signal['indicators']['volume_ma'] * 0.8:
+                return False
+                
+            # Check price distance from VWAP
+            vwap_dist = abs(signal['entry'] - signal['indicators']['vwap']) / signal['indicators']['vwap']
+            if vwap_dist > 0.02:  # More than 2% away from VWAP
+                return False
+                
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error in _validate_signal: {str(e)}")
+            return False
 
     async def analyze_pair(self, symbol: str) -> List[Dict]:
         """Analyze a trading pair across multiple timeframes"""
@@ -227,13 +563,26 @@ class SignalGenerator:
             logger.error(f"Error in analyze_pair for {symbol}: {str(e)}")
             return []
 
+    async def get_active_symbols(self) -> List[str]:
+        """Get list of active trading symbols"""
+        try:
+            markets = await self.binance_client.load_markets()
+            return [s for s in markets 
+                   if s.endswith('/USDT') 
+                   and markets[s]['active'] 
+                   and markets[s].get('quoteVolume24h', 0) > self.min_volume_btc * 50000]  # Approx BTC value
+        except Exception as e:
+            logger.error(f"Error getting active symbols: {str(e)}")
+            return []
+
     async def scan_market(self):
         """Scan all trading pairs for signals"""
         try:
-            # Get all USDT pairs
-            markets = await self.binance_client.load_markets()
-            symbols = [s for s in markets if s.endswith('/USDT') and markets[s]['active']]
-            
+            symbols = await self.get_active_symbols()
+            if not symbols:
+                logger.error("No active symbols found")
+                return
+
             logger.info(f"Scanning {len(symbols)} trading pairs...")
             
             for symbol in symbols:
@@ -248,8 +597,6 @@ class SignalGenerator:
                     
         except Exception as e:
             logger.error(f"Error in scan_market: {str(e)}")
-        finally:
-            await self.binance_client.close()
 
     async def _process_signal(self, signal: Dict):
         """Process and send valid signal"""
@@ -257,17 +604,14 @@ class SignalGenerator:
             message = self.format_signal(signal)
             logger.info(f"Signal found:\n{message}")
             
-            if self.telegram:
-                await self.telegram.send_message(message)
-                
-            if self.portfolio:
-                await self.portfolio.open_position(
-                    symbol=signal['symbol'],
-                    direction=signal['direction'],
-                    entry_price=signal['entry'],
-                    leverage=signal['leverage'],
-                    stop_loss=signal['sl'],
-                    take_profit=signal['tp_levels']
+            # Send to Telegram if configured
+            if hasattr(self.config, 'TELEGRAM_BOT_TOKEN') and hasattr(self.config, 'TELEGRAM_CHAT_ID'):
+                from telegram import Bot
+                bot = Bot(token=self.config.TELEGRAM_BOT_TOKEN)
+                await bot.send_message(
+                    chat_id=self.config.TELEGRAM_CHAT_ID,
+                    text=message,
+                    parse_mode='Markdown'
                 )
                 
         except Exception as e:
@@ -290,11 +634,14 @@ class SignalGenerator:
 🛑 *SL*: ${signal['sl']:.4f} ({signal['sl_percent']:.2f}%)
 📊 *Risk/Reward*: {signal['risk_reward']:.2f}
 🎯 *Win Probability*: {signal['win_probability']:.1%}
-📊 *Indicators*:
-   - EMA: {signal['indicators']['ema']}
-   - MACD: {signal['indicators']['macd']}
-   - RSI: {signal['indicators']['rsi']}
-   - ADX: {signal['indicators']['adx']:.2f}
+
+*Indicators*:
+- EMA 20/50/200: {signal['indicators']['ema_20']:.4f}/{signal['indicators']['ema_50']:.4f}/{signal['indicators']['ema_200']:.4f}
+- RSI: {signal['indicators']['rsi']:.2f}
+- ADX: {signal['indicators']['adx']:.2f}
+- MACD: {signal['indicators']['macd']:.4f} (Signal: {signal['indicators']['macd_signal']:.4f})
+- Volume: {signal['indicators']['volume']:.2f} (MA20: {signal['indicators']['volume_ma']:.2f})
+- VWAP: {signal['indicators']['vwap']:.4f}
 """
         except Exception as e:
             logger.error(f"Error formatting signal: {str(e)}")
@@ -307,6 +654,7 @@ class SignalGenerator:
             while True:
                 try:
                     await self.scan_market()
+                    logger.info("Market scan completed. Waiting for next cycle...")
                     await asyncio.sleep(300)  # 5 minutes between scans
                 except KeyboardInterrupt:
                     logger.info("Signal generator stopped by user")
@@ -317,21 +665,12 @@ class SignalGenerator:
         finally:
             await self.binance_client.close()
 
-# Helper classes (should be in separate files)
-class TechnicalAnalysis:
-    def calculate_atr(self, df, period=14):
-        high = df['high']
-        low = df['low']
-        close = df['close']
-        tr1 = high - low
-        tr2 = (high - close.shift()).abs()
-        tr3 = (low - close.shift()).abs()
-        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-        return tr.rolling(period).mean()
-
 class Config:
+    """Configuration class"""
     BINANCE_API_KEY = "YOUR_API_KEY"
     BINANCE_API_SECRET = "YOUR_API_SECRET"
+    TELEGRAM_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
+    TELEGRAM_CHAT_ID = "YOUR_TELEGRAM_CHAT_ID"
 
 if __name__ == "__main__":
     config = Config()
