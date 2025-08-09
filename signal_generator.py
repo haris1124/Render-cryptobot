@@ -294,6 +294,157 @@ class SignalGenerator:
                 return current_price * (1 - sl_pct), sl_pct * 100
             return current_price * (1 + sl_pct), sl_pct * 100
 
+    def _calculate_tp_levels(self, current_price: float, direction: str, sl: float, sl_pct: float) -> Tuple[List[float], float]:
+        """Calculate take profit levels"""
+        try:
+            # Calculate TP1 based on 1:1.5 risk:reward
+            if direction == "BULLISH":
+                tp1 = current_price + (1.5 * (current_price - sl))
+                tp2 = current_price + (2.0 * (current_price - sl))
+                tp3 = current_price + (3.0 * (current_price - sl))
+            else:
+                tp1 = current_price - (1.5 * (sl - current_price))
+                tp2 = current_price - (2.0 * (sl - current_price))
+                tp3 = current_price - (3.0 * (sl - current_price))
+                
+            tp1_pct = abs((tp1 - current_price) / current_price)
+            return [tp1, tp2, tp3], tp1_pct
+            
+        except Exception as e:
+            logger.error(f"Error in _calculate_tp_levels: {str(e)}")
+            if direction == "BULLISH":
+                return [current_price * 1.015, current_price * 1.03, current_price * 1.045], 1.5
+            else:
+                return [current_price * 0.985, current_price * 0.97, current_price * 0.955], 1.5
+
+    def _calculate_risk_reward(self, entry: float, sl: float, tp: float, direction: str) -> float:
+        """Calculate risk to reward ratio"""
+        try:
+            if direction == "BULLISH":
+                risk = entry - sl
+                reward = tp - entry
+            else:
+                risk = sl - entry
+                reward = entry - tp
+                
+            return reward / max(risk, 1e-10)  # Avoid division by zero
+        except Exception as e:
+            logger.error(f"Error in _calculate_risk_reward: {str(e)}")
+            return 1.0
+
+    def _calculate_confidence(self, indicators: Dict, direction: str) -> float:
+        """Calculate signal confidence score (0-1)"""
+        try:
+            confidence = 0.5  # Base confidence
+            
+            # ADX strength (0-0.2)
+            adx_strength = min(indicators['adx'] / 50.0, 1.0) * 0.2
+            confidence += adx_strength
+            
+            # Volume confirmation (0-0.15)
+            volume_ratio = indicators['volume'] / max(indicators['volume_ma'], 1)
+            volume_boost = min(max(0, (volume_ratio - 1.0) * 0.3), 0.15)
+            confidence += volume_boost
+            
+            # RSI confirmation (0-0.15)
+            if (direction == "BULLISH" and 30 < indicators['rsi'] < 70) or \
+               (direction == "BEARISH" and 30 < indicators['rsi'] < 70):
+                confidence += 0.1
+                
+            # MACD confirmation (0-0.1)
+            if (direction == "BULLISH" and indicators['macd_hist'] > 0) or \
+               (direction == "BEARISH" and indicators['macd_hist'] < 0):
+                confidence += 0.1
+                
+            # SuperTrend confirmation (0-0.1)
+            if (direction == "BULLISH" and indicators['supertrend_direction'] == 1) or \
+               (direction == "BEARISH" and indicators['supertrend_direction'] == -1):
+                confidence += 0.1
+                
+            return min(max(confidence, 0.5), 0.99)  # Keep between 0.5 and 0.99
+            
+        except Exception as e:
+            logger.error(f"Error in _calculate_confidence: {str(e)}")
+            return 0.7
+
+    def _determine_direction(self, indicators: Dict, current_price: float) -> str:
+        """Determine trade direction based on indicators"""
+        try:
+            # Count bullish and bearish signals
+            bullish = 0
+            bearish = 0
+            
+            # EMA Cross
+            if indicators['ema_20'] > indicators['ema_50'] > indicators['ema_200']:
+                bullish += 1
+            elif indicators['ema_20'] < indicators['ema_50'] < indicators['ema_200']:
+                bearish += 1
+                
+            # MACD
+            if indicators['macd'] > indicators['macd_signal']:
+                bullish += 1
+            else:
+                bearish += 1
+                
+            # RSI
+            if indicators['rsi'] > 50:
+                bullish += 1
+            else:
+                bearish += 1
+                
+            # Price vs VWAP
+            if current_price > indicators['vwap']:
+                bullish += 1
+            else:
+                bearish += 1
+                
+            # SuperTrend
+            if indicators['supertrend_direction'] == 1:
+                bullish += 1
+            else:
+                bearish += 1
+                
+            # Determine final direction
+            if bullish >= 3 and indicators['adx'] > 25:
+                return "BULLISH"
+            elif bearish >= 3 and indicators['adx'] > 25:
+                return "BEARISH"
+            return "NEUTRAL"
+            
+        except Exception as e:
+            logger.error(f"Error in _determine_direction: {str(e)}")
+            return "NEUTRAL"
+
+    def _validate_signal(self, signal: Dict) -> bool:
+        """Validate signal meets all criteria"""
+        try:
+            # Check minimum risk/reward
+            if signal['risk_reward'] < 1.3:
+                return False
+                
+            # Check minimum confidence
+            if signal['confidence'] < 0.7:
+                return False
+                
+            # Check ADX strength
+            if signal['indicators']['adx'] < 25:
+                return False
+                
+            # Check volume
+            if signal['indicators']['volume'] < signal['indicators']['volume_ma'] * 0.8:
+                return False
+                
+            # Check price distance from VWAP
+            vwap_dist = abs(signal['entry'] - signal['indicators']['vwap']) / signal['indicators']['vwap']
+            if vwap_dist > 0.02:  # More than 2% away from VWAP
+                return False
+                
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error in _validate_signal: {str(e)}")
+            return False
+
     async def _generate_signal(self, symbol: str, timeframe: str, df: pd.DataFrame) -> Optional[Dict]:
         """Generate trading signal for given symbol and timeframe"""
         try:
@@ -349,157 +500,6 @@ class SignalGenerator:
         except Exception as e:
             logger.error(f"Error in _generate_signal for {symbol}: {str(e)}")
             return None
-
-    def _determine_direction(self, indicators: Dict, current_price: float) -> str:
-        """Determine trade direction based on indicators"""
-        try:
-            # Count bullish and bearish signals
-            bullish = 0
-            bearish = 0
-            
-            # EMA Cross
-            if indicators['ema_20'] > indicators['ema_50'] > indicators['ema_200']:
-                bullish += 1
-            elif indicators['ema_20'] < indicators['ema_50'] < indicators['ema_200']:
-                bearish += 1
-                
-            # MACD
-            if indicators['macd'] > indicators['macd_signal']:
-                bullish += 1
-            else:
-                bearish += 1
-                
-            # RSI
-            if indicators['rsi'] > 50:
-                bullish += 1
-            else:
-                bearish += 1
-                
-            # Price vs VWAP
-            if current_price > indicators['vwap']:
-                bullish += 1
-            else:
-                bearish += 1
-                
-            # SuperTrend
-            if indicators['supertrend_direction'] == 1:
-                bullish += 1
-            else:
-                bearish += 1
-                
-            # Determine final direction
-            if bullish >= 3 and indicators['adx'] > 25:
-                return "BULLISH"
-            elif bearish >= 3 and indicators['adx'] > 25:
-                return "BEARISH"
-            return "NEUTRAL"
-            
-        except Exception as e:
-            logger.error(f"Error in _determine_direction: {str(e)}")
-            return "NEUTRAL"
-
-    def _calculate_tp_levels(self, entry: float, direction: str, sl: float, sl_pct: float) -> Tuple[List[float], float]:
-        """Calculate take profit levels"""
-        try:
-            # Calculate TP1 based on 1:1.5 risk:reward
-            if direction == "BULLISH":
-                tp1 = entry + (1.5 * (entry - sl))
-                tp2 = entry + (2.0 * (entry - sl))
-                tp3 = entry + (3.0 * (entry - sl))
-            else:
-                tp1 = entry - (1.5 * (sl - entry))
-                tp2 = entry - (2.0 * (sl - entry))
-                tp3 = entry - (3.0 * (sl - entry))
-                
-            tp1_pct = abs((tp1 - entry) / entry)
-            return [tp1, tp2, tp3], tp1_pct
-            
-        except Exception as e:
-            logger.error(f"Error in _calculate_tp_levels: {str(e)}")
-            if direction == "BULLISH":
-                return [entry * 1.015, entry * 1.03, entry * 1.045], 1.5
-            else:
-                return [entry * 0.985, entry * 0.97, entry * 0.955], 1.5
-
-    def _calculate_risk_reward(self, entry: float, sl: float, tp: float, direction: str) -> float:
-        """Calculate risk to reward ratio"""
-        try:
-            if direction == "BULLISH":
-                risk = entry - sl
-                reward = tp - entry
-            else:
-                risk = sl - entry
-                reward = entry - tp
-                
-            return reward / max(risk, 1e-10)  # Avoid division by zero
-        except Exception as e:
-            logger.error(f"Error in _calculate_risk_reward: {str(e)}")
-            return 1.0
-
-    def _calculate_confidence(self, indicators: Dict, direction: str) -> float:
-        """Calculate signal confidence score (0-1)"""
-        try:
-            confidence = 0.5  # Base confidence
-            
-            # ADX strength (0-0.2)
-            adx_strength = min(indicators['adx'] / 50.0, 1.0) * 0.2
-            confidence += adx_strength
-            
-            # Volume confirmation (0-0.15)
-            volume_ratio = indicators['volume'] / max(indicators['volume_ma'], 1)
-            volume_boost = min(max(0, (volume_ratio - 1.0) * 0.3), 0.15)
-            confidence += volume_boost
-            
-            # RSI confirmation (0-0.15)
-            if (direction == "BULLISH" and 30 < indicators['rsi'] < 70) or \
-               (direction == "BEARISH" and 30 < indicators['rsi'] < 70):
-                confidence += 0.1
-                
-            # MACD confirmation (0-0.1)
-            if (direction == "BULLISH" and indicators['macd_hist'] > 0) or \
-               (direction == "BEARISH" and indicators['macd_hist'] < 0):
-                confidence += 0.1
-                
-            # SuperTrend confirmation (0-0.1)
-            if (direction == "BULLISH" and indicators['supertrend_direction'] == 1) or \
-               (direction == "BEARISH" and indicators['supertrend_direction'] == -1):
-                confidence += 0.1
-                
-            return min(max(confidence, 0.5), 0.99)  # Keep between 0.5 and 0.99
-            
-        except Exception as e:
-            logger.error(f"Error in _calculate_confidence: {str(e)}")
-            return 0.7
-
-    def _validate_signal(self, signal: Dict) -> bool:
-        """Validate signal meets all criteria"""
-        try:
-            # Check minimum risk/reward
-            if signal['risk_reward'] < 1.3:
-                return False
-                
-            # Check minimum confidence
-            if signal['confidence'] < 0.7:
-                return False
-                
-            # Check ADX strength
-            if signal['indicators']['adx'] < 25:
-                return False
-                
-            # Check volume
-            if signal['indicators']['volume'] < signal['indicators']['volume_ma'] * 0.8:
-                return False
-                
-            # Check price distance from VWAP
-            vwap_dist = abs(signal['entry'] - signal['indicators']['vwap']) / signal['indicators']['vwap']
-            if vwap_dist > 0.02:  # More than 2% away from VWAP
-                return False
-                
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error in _validate_signal: {str(e)}")
-            return False
 
     async def analyze_pair(self, symbol: str) -> List[Dict]:
         """Analyze a trading pair across multiple timeframes"""
