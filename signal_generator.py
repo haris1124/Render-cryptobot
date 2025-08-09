@@ -320,11 +320,11 @@ class SignalGenerator:
                     directions.append(signal['direction'])
 
             # Require all 4 timeframes to agree on the same direction
-            if len(signals) >= 2:
+            if len(signals) >= 1:
                 dir_counts = {'BULLISH': directions.count('BULLISH'), 'BEARISH': directions.count('BEARISH')}
-                if dir_counts['BULLISH'] >= 2:
+                if dir_counts['BULLISH'] >= 1:
                     agreed_direction = 'BULLISH'
-                elif dir_counts['BEARISH']>= 2:
+                elif dir_counts['BEARISH']>= 1:
                     agreed_direction = 'BEARISH'
                 else:
                     return []
@@ -356,7 +356,7 @@ class SignalGenerator:
                 if df['volume'].iloc[-1] < 0.2 * recent_vol:
                     return []
                     
-                if (agree_count == 4 and
+                if (agree_count == 1 and
                     base_signal['indicators']['adx'] > 25 and
                     base_signal['confidence'] > 0.7 and
                     base_signal['risk_reward'] > 1.3 and
