@@ -356,7 +356,7 @@ class SignalGenerator:
                 if df['volume'].iloc[-1] < 0.2 * recent_vol:
                     return []
                     
-                if (agree_count == 1 and
+                if (agree_count == 4 and
                     base_signal['indicators']['adx'] > 25 and
                     base_signal['confidence'] > 0.7 and
                     base_signal['risk_reward'] > 1.3 and
