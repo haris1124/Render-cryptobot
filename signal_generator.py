@@ -86,7 +86,7 @@ class SignalGenerator:
             atr_percent = (atr_value / current_price) if current_price > 0 else 0.01
             
             # Base SL percentage between 0.5% and 1.5%
-            base_sl_pct = min(max(0.005, atr_percent * 0.5), 0.015)
+            base_sl_pct = min(max(0.01, atr_percent * 0.5), 0.02)
             
             # Adjust SL based on recent volatility
             recent_high = df['high'].iloc[-10:].max()
@@ -96,7 +96,7 @@ class SignalGenerator:
             
             # Calculate final SL percentage
             sl_pct = base_sl_pct * volatility_factor
-            sl_pct = min(max(0.005, sl_pct), 0.015)  # Ensure within 0.5%-1.5% range
+            sl_pct = min(max(0.01, sl_pct), 0.02)  # Ensure within 0.5%-1.5% range
             
             # Calculate SL price based on direction
             if direction == "BULLISH":
@@ -122,7 +122,7 @@ class SignalGenerator:
             
         except Exception as e:
             logger.error(f"Error in _calculate_sl_levels: {e}")
-            sl_pct = 0.01  # 1% default
+            sl_pct = 0.015  # 1% default
             if direction == "BULLISH":
                 return current_price * (1 - sl_pct), sl_pct * 100
             return current_price * (1 + sl_pct), sl_pct * 100
