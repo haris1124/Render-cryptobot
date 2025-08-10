@@ -351,15 +351,15 @@ class SignalGenerator:
                     return []
                     
                 # Volume strict filter
-                recent_vol = df['volume'].iloc[-40:].mean()
-                if df['volume'].iloc[-1] < 0.2 * recent_vol:
+                recent_vol = df['volume'].iloc[-20:].mean()   # candles
+                if df['volume'].iloc[-1] < 0.1 * recent_vol:
                     return []
                     
                 if (agree_count == 4 and
                     base_signal['indicators']['adx'] > 20 and
-                    base_signal['confidence'] > 0.75 and
-                    base_signal['risk_reward'] > 1.3 and
-                    base_signal['win_probability'] > 0.7):
+                    base_signal['confidence'] > 0.65 and
+                    base_signal['risk_reward'] > 1.1 and
+                    base_signal['win_probability'] > 0.6):
                     
                     self.last_signal[symbol] = base_signal
                     self.last_signal_time[symbol] = current_time
