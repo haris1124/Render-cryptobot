@@ -109,7 +109,7 @@ class SignalGenerator:
                 sl = max(sl, swing_high)
             
             # Ensure SL is not too close to the current price
-            min_distance = current_price * 0.002
+            min_distance = current_price * 0.001
             if direction == "BULLISH":
                 sl = min(sl, current_price - min_distance)
             else:
