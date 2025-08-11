@@ -78,62 +78,62 @@ class SignalGenerator:
             return pd.DataFrame()
 
     def _calculate_sl_levels(self, df: pd.DataFrame, current_price: float, direction: str) -> Tuple[float, float]:
-        """Calculate stop loss levels with improved logic"""
-        try:
-            # Calculate ATR and recent volatility
-            atr = self.ta.calculate_atr(df, period=14)
-            atr_value = atr.iloc[-1] if not atr.empty else 0
-            atr_percent = (atr_value / current_price) if current_price > 0 else 0.009
-            
-            # Base SL percentage between 0.5% and 1.5%
-            base_sl_pct = min(max(0.009, atr_percent * 0.7), 0.02)
-            
-            # Adjust SL based on recent volatility
-            recent_high = df['high'].iloc[-10:].max()
-            recent_low = df['low'].iloc[-10:].min()
-            recent_range = (recent_high - recent_low) / current_price
-            volatility_factor = min(max(0.8, recent_range * 5), 1.2)
-            
-            # Calculate final SL percentage
-            sl_pct = base_sl_pct * volatility_factor
-            sl_pct = min(max(0.005, sl_pct), 0.015)  # Ensure within 0.5%-1.5% range
-            
-            # Calculate SL price based on direction
-            if direction == "BULLISH":
-                sl = current_price * (1 - sl_pct)
-                swing_low = df['low'].iloc[-10:].min()
-                sl = min(sl, swing_low)
-            else:
-                sl = current_price * (1 + sl_pct)
-                swing_high = df['high'].iloc[-10:].max()
-                sl = max(sl, swing_high)
-            
-            # Ensure SL is not too close to the current price
-            min_distance = current_price * 0.002
-            if direction == "BULLISH":
-                sl = min(sl, current_price - min_distance)
-            else:
-                sl = max(sl, current_price + min_distance)
-            
-            # Calculate actual SL percentage for reporting
-            actual_sl_pct = abs((sl - current_price) / current_price)
-            # Final check to ensure we stay within 0.9%-2% range 
-            if actual_sl_pct < 0.009:
-                actual_sl_pct = 0.009
-                sl = current_price * (1 - actual_sl_pct) if direction == "BULLISH" else current_price * (1 + actual_sl_pct)
-                elif actual_sl_pct > 0.02:
-                    actual_sl_pct = 0.02
-                    sl = current_price * (1 - actual_sl_pct) if direction == "BULLISH" else current_price * (1 + actual_sl_pct)
-                 
-            return sl, actual_sl_pct * 100
-            
-        except Exception as e:
-            logger.error(f"Error in _calculate_sl_levels: {e}")
-            sl_pct = 0.015  # 1% default
-            if direction == "BULLISH":
-                return current_price * (1 - sl_pct), sl_pct * 100
-            return current_price * (1 + sl_pct), sl_pct * 100
-
+    """Calculate stop loss levels with improved logic (0.9% to 2% range)"""
+    try:
+        # Calculate ATR and recent volatility
+        atr = self.ta.calculate_atr(df, period=14)
+        atr_value = atr.iloc[-1] if not atr.empty else 0
+        atr_percent = (atr_value / current_price) if current_price > 0 else 0.009  # 0.9% default
+        
+        # Base SL percentage between 0.9% and 2%
+        base_sl_pct = min(max(0.009, atr_percent * 0.7), 0.02)
+        
+        # Adjust SL based on recent volatility
+        recent_high = df['high'].iloc[-10:].max()
+        recent_low = df['low'].iloc[-10:].min()
+        recent_range = (recent_high - recent_low) / current_price
+        volatility_factor = min(max(0.9, recent_range * 4), 1.1)
+        
+        # Calculate final SL percentage
+        sl_pct = base_sl_pct * volatility_factor
+        sl_pct = min(max(0.009, sl_pct), 0.02)  # Enforce 0.9%-2% range
+        
+        # Calculate SL price based on direction
+        if direction == "BULLISH":
+            sl = current_price * (1 - sl_pct)
+            swing_low = df['low'].iloc[-10:].min()
+            sl = min(sl, swing_low)
+        else:
+            sl = current_price * (1 + sl_pct)
+            swing_high = df['high'].iloc[-10:].max()
+            sl = max(sl, swing_high)
+        
+        # Ensure SL is not too close to the current price
+        min_distance = current_price * 0.003  # 0.3% minimum distance
+        if direction == "BULLISH":
+            sl = min(sl, current_price - min_distance)
+        else:
+            sl = max(sl, current_price + min_distance)
+        
+        # Calculate actual SL percentage for reporting
+        actual_sl_pct = abs((sl - current_price) / current_price)
+        
+        # Final check to ensure we stay within 0.9%-2% range
+        if actual_sl_pct < 0.009:
+            actual_sl_pct = 0.009
+            sl = current_price * (1 - actual_sl_pct) if direction == "BULLISH" else current_price * (1 + actual_sl_pct)
+        elif actual_sl_pct > 0.02:
+            actual_sl_pct = 0.02
+            sl = current_price * (1 - actual_sl_pct) if direction == "BULLISH" else current_price * (1 + actual_sl_pct)
+        
+        return sl, actual_sl_pct * 100
+        
+    except Exception as e:
+        logger.error(f"Error in _calculate_sl_levels: {e}")
+        sl_pct = 0.0145  # ~1.45% default (mid-point of 0.9%-2%)
+        if direction == "BULLISH":
+            return current_price * (1 - sl_pct), sl_pct * 100
+        return current_price * (1 + sl_pct), sl_pct * 100
     async def _generate_signal(self, symbol: str, timeframe: str, df: pd.DataFrame) -> Optional[Dict]:
         try:
             current_price = df['close'].iloc[-1]
