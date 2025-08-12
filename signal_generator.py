@@ -76,7 +76,7 @@ class SignalGenerator:
         except Exception as e:
             logger.error(f"Error fetching data for {symbol}: {e}")
             return pd.DataFrame()
-            def _calculate_sl_levels(self, df: pd.DataFrame, current_price: float, direction: str) -> Tuple[float, float]:
+           def _calculate_sl_levels(self, df: pd.DataFrame, current_price: float, direction: str) -> Tuple[float, float]:
         """Calculate stop loss levels with improved logic"""
         try:
             # Calculate ATR and recent volatility
