@@ -85,7 +85,7 @@ class SignalGenerator:
             atr_percent = (atr_value / current_price) if current_price > 0 else 0.01
             
             # Base SL percentage between 0.5% and 1.5%
-            base_sl_pct = min(max(0.009, atr_percent * 0.7), 0.02)
+            base_sl_pct = min(max(0.009, atr_percent * 0.9), 0.02)
             
             # Adjust SL based on recent volatility
             recent_high = df['high'].iloc[-10:].max()
