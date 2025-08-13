@@ -76,7 +76,8 @@ class SignalGenerator:
         except Exception as e:
             logger.error(f"Error fetching data for {symbol}: {e}")
             return pd.DataFrame()
-           def _calculate_sl_levels(self, df: pd.DataFrame, current_price: float, direction: str) -> Tuple[float, float]:
+
+    def _calculate_sl_levels(self, df: pd.DataFrame, current_price: float, direction: str) -> Tuple[float, float]:
         """Calculate stop loss levels with improved logic"""
         try:
             # Calculate ATR and recent volatility
@@ -121,11 +122,11 @@ class SignalGenerator:
             
         except Exception as e:
             logger.error(f"Error in _calculate_sl_levels: {e}")
-            sl_pct = 0.015  # 1% default
+            sl_pct = 0.01  # 1% default
             if direction == "BULLISH":
                 return current_price * (1 - sl_pct), sl_pct * 100
             return current_price * (1 + sl_pct), sl_pct * 100
-    
+
     async def _generate_signal(self, symbol: str, timeframe: str, df: pd.DataFrame) -> Optional[Dict]:
         try:
             current_price = df['close'].iloc[-1]
@@ -218,7 +219,8 @@ class SignalGenerator:
 
             # Calculate confidence based on indicator agreement
             agree_count = max(direction_counts.values())
-            confidence = 0.7 + (0.3 * (agree_count / 6))
+            confidence = 0.65 + (0.4 * (agree_count / 6))
+            confidence = min(confidence, 0.95)
 
             # Calculate TP levels (0.8% to 1.5% based on ATR)
             atr_percent = (indicators['atr'] / current_price) if current_price > 0 else 0.01
@@ -322,7 +324,7 @@ class SignalGenerator:
                 dir_counts = {'BULLISH': directions.count('BULLISH'), 'BEARISH': directions.count('BEARISH')}
                 if dir_counts['BULLISH'] >= 3:
                     agreed_direction = 'BULLISH'
-                elif dir_counts['BEARISH'] >= 3:
+                elif dir_counts['BEARISH']>= 3:
                     agreed_direction = 'BEARISH'
                 else:
                     return []
@@ -350,15 +352,15 @@ class SignalGenerator:
                     return []
                     
                 # Volume strict filter
-                recent_vol = df['volume'].iloc[-30:].mean()   # candles
-                if df['volume'].iloc[-1] < 0.1 * recent_vol:
+                recent_vol = df['volume'].iloc[-40:].mean()
+                if df['volume'].iloc[-1] < 0.2 * recent_vol:
                     return []
                     
                 if (agree_count == 6 and
-                    base_signal['indicators']['adx'] > 20 and
-                    base_signal['confidence'] > 0.65 and
-                    base_signal['risk_reward'] > 1.1 and
-                    base_signal['win_probability'] > 0.6):
+                    base_signal['indicators']['adx'] > 35 and
+                    base_signal['confidence'] > 0.7 and
+                    base_signal['risk_reward'] > 1.3 and
+                    base_signal['win_probability'] > 0.7):
                     
                     self.last_signal[symbol] = base_signal
                     self.last_signal_time[symbol] = current_time
