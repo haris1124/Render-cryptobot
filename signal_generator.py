@@ -120,7 +120,7 @@ class SignalGenerator:
             if actual_sl_pct < 0.009:
                 actual_sl_pct = 0.009
                 sl = current_price * (1 - actual_sl_pct) if direction == "BULLISH" else current_price * (1 + actual_sl_pct)
-                elif actual_sl_pct > 0.02:
+            elif actual_sl_pct > 0.02:
                     actual_sl_pct = 0.02
                     sl = current_price * (1 - actual_sl_pct) if direction == "BULLISH" else current_price * (1 + actual_sl_pct)
             
