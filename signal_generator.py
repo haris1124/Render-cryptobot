@@ -226,7 +226,7 @@ class SignalGenerator:
 
             # Calculate confidence based on indicator agreement
             agree_count = max(direction_counts.values())
-            confidence = 0.65 + (0.4 * (agree_count / 6))
+            confidence = 0.65 + (0.4 * (agree_count / 4))
             confidence = min(confidence, 0.95)
 
             # Calculate TP levels (0.8% to 1.5% based on ATR)
@@ -327,11 +327,11 @@ class SignalGenerator:
                     directions.append(signal['direction'])
 
             # Require all 4 timeframes to agree on the same direction
-            if len(signals) >= 2:
+            if len(signals) >= 1:
                 dir_counts = {'BULLISH': directions.count('BULLISH'), 'BEARISH': directions.count('BEARISH')}
-                if dir_counts['BULLISH'] >= 2:
+                if dir_counts['BULLISH'] >= 1:
                     agreed_direction = 'BULLISH'
-                elif dir_counts['BEARISH']>= 2:
+                elif dir_counts['BEARISH']>= 1:
                     agreed_direction = 'BEARISH'
                 else:
                     return []
@@ -363,11 +363,11 @@ class SignalGenerator:
                 if df['volume'].iloc[-1] < 0.15 * recent_vol:
                     return []
                     
-                if (agree_count == 6 and
-                    base_signal['indicators']['adx'] > 25 and
-                    base_signal['confidence'] > 0.6 and
-                    base_signal['risk_reward'] > 1.1 and
-                    base_signal['win_probability'] > 0.6):
+                if (agree_count == 4 and
+                    base_signal['indicators']['adx'] > 10 and
+                    base_signal['confidence'] > 0.4 and
+                    base_signal['risk_reward'] > 0.5 and
+                    base_signal['win_probability'] > 0.3):
                     
                     self.last_signal[symbol] = base_signal
                     self.last_signal_time[symbol] = current_time
