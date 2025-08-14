@@ -86,13 +86,13 @@ class SignalGenerator:
             atr_percent = (atr_value / current_price) if current_price > 0 else 0.01
             
             # Base SL percentage between 0.5% and 1.5%
-            base_sl_pct = min(max(0.009, atr_percent * 0.9), 0.02)
+            base_sl_pct = min(max(0.009, atr_percent * 0.8 * random_factor), 0.02)
             
             # Adjust SL based on recent volatility
             recent_high = df['high'].iloc[-10:].max()
             recent_low = df['low'].iloc[-10:].min()
             recent_range = (recent_high - recent_low) / current_price
-            volatility_factor = min(max(0.8, recent_range * 5), 1.2)
+            volatility_factor = min(max(0.9, recent_range * 4), 1.1)
             
             # Calculate final SL percentage
             sl_pct = base_sl_pct * volatility_factor
@@ -117,12 +117,18 @@ class SignalGenerator:
             
             # Calculate actual SL percentage for reporting
             actual_sl_pct = abs((sl - current_price) / current_price)
+            if actual_sl_pct < 0.009:
+                actual_sl_pct = 0.009
+                sl = current_price * (1 - actual_sl_pct) if direction == "BULLISH" else current_price * (1 + actual_sl_pct)
+                elif actual_sl_pct > 0.02:
+                    actual_sl_pct = 0.02
+                    sl = current_price * (1 - actual_sl_pct) if direction == "BULLISH" else current_price * (1 + actual_sl_pct)
             
             return sl, actual_sl_pct * 100
             
         except Exception as e:
             logger.error(f"Error in _calculate_sl_levels: {e}")
-            sl_pct = 0.01  # 1% default
+            sl_pct = 0.0145  # 1% default
             if direction == "BULLISH":
                 return current_price * (1 - sl_pct), sl_pct * 100
             return current_price * (1 + sl_pct), sl_pct * 100
@@ -352,7 +358,7 @@ class SignalGenerator:
                     return []
                     
                 # Volume strict filter
-                recent_vol = df['volume'].iloc[-20:].mean() #candles
+                recent_vol = df['volume'].iloc[-40:].mean() #candles
                 if df['volume'].iloc[-1] < 0.2 * recent_vol:
                     return []
                     
