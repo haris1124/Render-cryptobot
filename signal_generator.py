@@ -86,18 +86,17 @@ class SignalGenerator:
             atr_percent = (atr_value / current_price) if current_price > 0 else 0.01
             
             # Base SL percentage between 0.5% and 1.5%
-            random_factor = random.uniform(0.98, 1.02)
-            base_sl_pct = min(max(0.009, atr_percent * 0.8 * random_factor), 0.02)
+            base_sl_pct = min(max(0.005, atr_percent * 0.5), 0.015)
             
             # Adjust SL based on recent volatility
             recent_high = df['high'].iloc[-10:].max()
             recent_low = df['low'].iloc[-10:].min()
             recent_range = (recent_high - recent_low) / current_price
-            volatility_factor = min(max(0.9, recent_range * 4), 1.1)
+            volatility_factor = min(max(0.8, recent_range * 5), 1.2)
             
             # Calculate final SL percentage
             sl_pct = base_sl_pct * volatility_factor
-            sl_pct = min(max(0.009, sl_pct), 0.02)  # Ensure within 0.5%-1.5% range
+            sl_pct = min(max(0.005, sl_pct), 0.015)  # Ensure within 0.5%-1.5% range
             
             # Calculate SL price based on direction
             if direction == "BULLISH":
@@ -118,18 +117,12 @@ class SignalGenerator:
             
             # Calculate actual SL percentage for reporting
             actual_sl_pct = abs((sl - current_price) / current_price)
-            if actual_sl_pct < 0.009:
-                actual_sl_pct = 0.009
-                sl = current_price * (1 - actual_sl_pct) if direction == "BULLISH" else current_price * (1 + actual_sl_pct)
-            elif actual_sl_pct > 0.02:
-                    actual_sl_pct = 0.02
-                    sl = current_price * (1 - actual_sl_pct) if direction == "BULLISH" else current_price * (1 + actual_sl_pct)
             
             return sl, actual_sl_pct * 100
             
         except Exception as e:
             logger.error(f"Error in _calculate_sl_levels: {e}")
-            sl_pct = 0.0145  # 1% default
+            sl_pct = 0.01  # 1% default
             if direction == "BULLISH":
                 return current_price * (1 - sl_pct), sl_pct * 100
             return current_price * (1 + sl_pct), sl_pct * 100
@@ -226,8 +219,7 @@ class SignalGenerator:
 
             # Calculate confidence based on indicator agreement
             agree_count = max(direction_counts.values())
-            confidence = 0.65 + (0.4 * (agree_count / 4))
-            confidence = min(confidence, 0.95)
+            confidence = 0.7 + (0.3 * (agree_count / 4))
 
             # Calculate TP levels (0.8% to 1.5% based on ATR)
             atr_percent = (indicators['atr'] / current_price) if current_price > 0 else 0.01
@@ -327,11 +319,11 @@ class SignalGenerator:
                     directions.append(signal['direction'])
 
             # Require all 4 timeframes to agree on the same direction
-            if len(signals) >= 1:
+            if len(signals) >= 2:
                 dir_counts = {'BULLISH': directions.count('BULLISH'), 'BEARISH': directions.count('BEARISH')}
-                if dir_counts['BULLISH'] >= 1:
+                if dir_counts['BULLISH'] >= 2:
                     agreed_direction = 'BULLISH'
-                elif dir_counts['BEARISH']>= 1:
+                elif dir_counts['BEARISH'] >= 2:
                     agreed_direction = 'BEARISH'
                 else:
                     return []
@@ -359,15 +351,15 @@ class SignalGenerator:
                     return []
                     
                 # Volume strict filter
-                recent_vol = df['volume'].iloc[-20:].mean() #candles
-                if df['volume'].iloc[-1] < 0.15 * recent_vol:
+                recent_vol = df['volume'].iloc[-40:].mean()
+                if df['volume'].iloc[-1] < recent_vol:
                     return []
                     
                 if (agree_count == 4 and
-                    base_signal['indicators']['adx'] > 10 and
-                    base_signal['confidence'] > 0.4 and
-                    base_signal['risk_reward'] > 0.5 and
-                    base_signal['win_probability'] > 0.3):
+                    base_signal['indicators']['adx'] > 25 and
+                    base_signal['confidence'] > 0.75 and
+                    base_signal['risk_reward'] > 1.3 and
+                    base_signal['win_probability'] > 0.7):
                     
                     self.last_signal[symbol] = base_signal
                     self.last_signal_time[symbol] = current_time
@@ -494,3 +486,6 @@ if __name__ == "__main__":
     config = Config()
     bot = SignalGenerator(config)
     asyncio.run(bot.run())
+
+
+
