@@ -20,5 +20,5 @@ class Config:
         self.MIN_RISK_REWARD = float(os.getenv('MIN_RISK_REWARD', 1.7))       # Minimum risk/reward ratio
         self.MIN_WIN_PROBABILITY = float(os.getenv('MIN_WIN_PROBABILITY', 0.7)) # Minimum win probability
         self.MIN_TREND_STRENGTH = float(os.getenv('MIN_TREND_STRENGTH', 25))  # Minimum ADX/trend strength
-        self.MIN_INDICATORS = int(os.getenv('MIN_INDICATORS', 2))             # Minimum indicators in agreement
+        self.MIN_INDICATORS = int(os.getenv('MIN_INDICATORS', 4))             # Minimum indicators in agreement
         self.MAX_DAILY_LOSS_PERCENT = float(os.getenv('MAX_DAILY_LOSS_PERCENT', 5))
