@@ -259,11 +259,11 @@ class SignalGenerator:
                 if signal and signal['direction'] != 'NEUTRAL':
                     signals.append(signal)
                     directions.append(signal['direction'])
-            if len(signals) >= 2:
+            if len(signals) >= 4:
                 dir_counts = {'BULLISH': directions.count('BULLISH'), 'BEARISH': directions.count('BEARISH')}
-                if dir_counts['BULLISH'] >= 2:
+                if dir_counts['BULLISH'] >= 4:
                     agreed_direction = 'BULLISH'
-                elif dir_counts['BEARISH'] >= 2:
+                elif dir_counts['BEARISH'] >= 4:
                     agreed_direction = 'BEARISH'
                 else:
                     print("DEBUG: Not enough agreement in directions")
@@ -294,11 +294,11 @@ class SignalGenerator:
                     print("DEBUG: Volume too low")
                     return []
                 print(f"DEBUG: {symbol} agree_count={agree_count}, adx={base_signal['indicators']['adx']}, conf={base_signal['confidence']}, risk_reward={base_signal['risk_reward']}, win_prob={base_signal['win_probability']}")
-                if (agree_count == 4 and
-                    base_signal['indicators']['adx'] > 25 and
-                    base_signal['confidence'] > 0.75 and
-                    base_signal['risk_reward'] > 0.7 and   # LOWERED FROM 1.3
-                    base_signal['win_probability'] > 0.7):
+                if (agree_count == 8 and
+                    base_signal['indicators']['adx'] > 35 and
+                    base_signal['confidence'] > 0.8 and
+                    base_signal['risk_reward'] > 0.75 and   # LOWERED FROM 1.3
+                    base_signal['win_probability'] > 0.8):
                     self.last_signal[symbol] = base_signal
                     self.last_signal_time[symbol] = current_time
                     self.scanned_symbols.add(symbol)
