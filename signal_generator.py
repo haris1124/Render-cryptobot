@@ -86,28 +86,24 @@ class SignalGenerator:
             if direction == "BULLISH":
                 sl_candidate = current_price * (1 - sl_pct)
                 swing_low = df['low'].iloc[-10:].min()
-                # SL must be below entry, and not closer than 1% below, but not lower than swing low
                 sl = max(sl_candidate, swing_low)
                 sl = min(sl, current_price * 0.99)
-                # Never above entry
                 sl = min(sl, current_price - (current_price * 0.001))
             else:
                 sl_candidate = current_price * (1 + sl_pct)
                 swing_high = df['high'].iloc[-10:].max()
-                # SL must be above entry, and not closer than 1% above, but not higher than swing high
                 sl = min(sl_candidate, swing_high)
                 sl = max(sl, current_price * 1.01)
-                # Never below entry
                 sl = max(sl, current_price + (current_price * 0.001))
 
             actual_sl_pct = abs((sl - current_price) / current_price)
-            # Final enforcement
             if actual_sl_pct < 0.01:
                 actual_sl_pct = 0.01
                 sl = current_price * (1 - actual_sl_pct) if direction == "BULLISH" else current_price * (1 + actual_sl_pct)
             elif actual_sl_pct > 0.02:
                 actual_sl_pct = 0.02
                 sl = current_price * (1 - actual_sl_pct) if direction == "BULLISH" else current_price * (1 + actual_sl_pct)
+            print(f"DEBUG SL: direction={direction}, entry={current_price}, SL={sl}, SL%={actual_sl_pct*100}")
             return sl, actual_sl_pct * 100
         except Exception as e:
             logger.error(f"Error in _calculate_sl_levels: {e}")
@@ -120,6 +116,7 @@ class SignalGenerator:
         try:
             current_price = df['close'].iloc[-1]
             if pd.isna(current_price) or current_price <= 0:
+                print("DEBUG: Invalid current price")
                 return None
             indicators = {}
             emas = self.ta.calculate_ema(df, [20, 50, 200])
@@ -202,6 +199,7 @@ class SignalGenerator:
                 reward = current_price - tp1
             risk_reward = reward / risk if risk != 0 else 0
             win_probability = 0.7 + (0.2 * (confidence - 0.7) / 0.3)
+            print(f"DEBUG: {symbol} {timeframe} direction={direction}, agree_count={agree_count}, conf={confidence:.2f}, risk_reward={risk_reward:.2f}, win_prob={win_probability:.2f}, adx={indicators['adx']:.2f}, entry={current_price}, SL={sl}, TP1={tp1}")
             signal = {
                 'symbol': symbol,
                 'direction': direction,
@@ -218,18 +216,23 @@ class SignalGenerator:
                 'indicators': indicators
             }
             if direction == "NEUTRAL":
+                print("DEBUG: Direction neutral, skipping")
                 return None
             if direction == "BULLISH":
                 if not all(tp > current_price for tp in tp_levels) or not (sl < current_price):
+                    print("DEBUG: TP or SL invalid for BULLISH")
                     return None
             else:
                 if not all(tp < current_price for tp in tp_levels) or not (sl > current_price):
+                    print("DEBUG: TP or SL invalid for BEARISH")
                     return None
             if risk_reward < 1.0:
+                print("DEBUG: risk_reward too low")
                 return None
             return signal
         except Exception as e:
             logger.error(f"Error generating signal for {symbol} on {timeframe}: {e}")
+            print(f"DEBUG: Exception in _generate_signal: {e}")
             return None
 
     async def analyze_pair(self, symbol: str) -> List[Dict]:
@@ -250,6 +253,7 @@ class SignalGenerator:
             for tf in timeframes:
                 df = await self.get_historical_data(symbol, tf, limit=120)
                 if df.empty or len(df) < getattr(self.config, 'MIN_CANDLES', 100):
+                    print(f"DEBUG: Not enough data for {symbol} {tf}")
                     continue
                 signal = await self._generate_signal(symbol, tf, df)
                 if signal and signal['direction'] != 'NEUTRAL':
@@ -262,6 +266,7 @@ class SignalGenerator:
                 elif dir_counts['BEARISH'] >= 2:
                     agreed_direction = 'BEARISH'
                 else:
+                    print("DEBUG: Not enough agreement in directions")
                     return []
                 agreeing_signals = [s for s in signals if s['direction'] == agreed_direction]
                 base_signal = max(agreeing_signals, key=lambda s: s['confidence'])
@@ -275,14 +280,20 @@ class SignalGenerator:
                     base_signal['indicators']['supertrend'] == base_signal['direction'],
                     base_signal['indicators']['vwap'] == base_signal['direction']
                 ])
+                df = await self.get_historical_data(symbol, '1h', limit=120)
                 ema200 = self.ta.calculate_ema(df, [200])['ema_200'].iloc[-1]
+                print(f"DEBUG: {symbol} EMA200={ema200}, entry={base_signal['entry']}")
                 if agreed_direction == 'BULLISH' and base_signal['entry'] < ema200:
+                    print("DEBUG: BULLISH but entry below EMA200")
                     return []
                 if agreed_direction == 'BEARISH' and base_signal['entry'] > ema200:
+                    print("DEBUG: BEARISH but entry above EMA200")
                     return []
                 recent_vol = df['volume'].iloc[-40:].mean()
                 if df['volume'].iloc[-1] < recent_vol:
+                    print("DEBUG: Volume too low")
                     return []
+                print(f"DEBUG: {symbol} agree_count={agree_count}, adx={base_signal['indicators']['adx']}, conf={base_signal['confidence']}, risk_reward={base_signal['risk_reward']}, win_prob={base_signal['win_probability']}")
                 if (agree_count == 4 and
                     base_signal['indicators']['adx'] > 25 and
                     base_signal['confidence'] > 0.75 and
@@ -294,9 +305,14 @@ class SignalGenerator:
                     self.used_coins.add(symbol)
                     logger.info(f"Added {symbol} to used_coins for this session")
                     return [base_signal]
+                else:
+                    print("DEBUG: Final signal validation failed")
+            else:
+                print("DEBUG: Not enough signals for", symbol)
             return []
         except Exception as e:
             logger.error(f"Error in analyze_pair for {symbol}: {e}")
+            print(f"DEBUG: Exception in analyze_pair: {e}")
             return []
 
     async def scan_market(self):
@@ -321,6 +337,7 @@ class SignalGenerator:
                 await asyncio.sleep(1)
         except Exception as e:
             logger.error(f"Error in scan_market: {e}")
+            print(f"DEBUG: Exception in scan_market: {e}")
         finally:
             await self.binance_client.close()
 
@@ -377,6 +394,7 @@ class SignalGenerator:
                 logger.warning(f"Failed to send signal for {signal['symbol']} to Telegram")
         except Exception as e:
             logger.error(f"Error executing trade signal for {signal['symbol']}: {e}")
+            print(f"DEBUG: Exception in _execute_trade: {e}")
 
     async def run(self):
         logger.info("Starting trading bot...")
@@ -403,6 +421,7 @@ class SignalGenerator:
                 break
             except Exception as e:
                 logger.error(f"Error in main loop: {e}")
+                print(f"DEBUG: Exception in main loop: {e}")
                 await asyncio.sleep(60)
 
 if __name__ == "__main__":
