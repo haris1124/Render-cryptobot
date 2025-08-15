@@ -5,7 +5,6 @@ import asyncio
 from typing import Dict, List, Optional, Tuple
 import ccxt.async_support as ccxt
 import pandas as pd
-import numpy as np
 from config import Config
 from Technical_analysis import TechnicalAnalysis
 from Telegram_client import Telegram
@@ -29,9 +28,7 @@ class SignalGenerator:
             'secret': config.BINANCE_API_SECRET,
             'enableRateLimit': True,
             'testnet': True,
-            'urls': {
-                'api': 'https://testnet.binance.vision/api',
-            }
+            'urls': {'api': 'https://testnet.binance.vision/api'}
         })
         self.telegram = Telegram(config.TELEGRAM_BOT_TOKEN, config.TELEGRAM_CHAT_ID)
         self.portfolio = Portfolio(self.binance_client, config)
@@ -78,27 +75,13 @@ class SignalGenerator:
             return pd.DataFrame()
 
     def _calculate_sl_levels(self, df: pd.DataFrame, current_price: float, direction: str) -> Tuple[float, float]:
-        """Calculate stop loss levels with improved logic"""
+        """Calculate stop loss levels dynamically between 1% and 2% based on market conditions."""
         try:
-            # Calculate ATR and recent volatility
             atr = self.ta.calculate_atr(df, period=14)
             atr_value = atr.iloc[-1] if not atr.empty else 0
             atr_percent = (atr_value / current_price) if current_price > 0 else 0.01
-            
-            # Base SL percentage between 0.5% and 1.5%
-            base_sl_pct = min(max(0.005, atr_percent * 0.5), 0.015)
-            
-            # Adjust SL based on recent volatility
-            recent_high = df['high'].iloc[-10:].max()
-            recent_low = df['low'].iloc[-10:].min()
-            recent_range = (recent_high - recent_low) / current_price
-            volatility_factor = min(max(0.8, recent_range * 5), 1.2)
-            
-            # Calculate final SL percentage
-            sl_pct = base_sl_pct * volatility_factor
-            sl_pct = min(max(0.005, sl_pct), 0.015)  # Ensure within 0.5%-1.5% range
-            
-            # Calculate SL price based on direction
+            random_factor = random.uniform(1.0, 2.0)
+            sl_pct = min(max(0.01, atr_percent * random_factor), 0.02)
             if direction == "BULLISH":
                 sl = current_price * (1 - sl_pct)
                 swing_low = df['low'].iloc[-10:].min()
@@ -107,22 +90,22 @@ class SignalGenerator:
                 sl = current_price * (1 + sl_pct)
                 swing_high = df['high'].iloc[-10:].max()
                 sl = max(sl, swing_high)
-            
-            # Ensure SL is not too close to the current price
-            min_distance = current_price * 0.002
+            min_distance = current_price * 0.003
             if direction == "BULLISH":
                 sl = min(sl, current_price - min_distance)
             else:
                 sl = max(sl, current_price + min_distance)
-            
-            # Calculate actual SL percentage for reporting
             actual_sl_pct = abs((sl - current_price) / current_price)
-            
+            if actual_sl_pct < 0.01:
+                actual_sl_pct = 0.01
+                sl = current_price * (1 - actual_sl_pct) if direction == "BULLISH" else current_price * (1 + actual_sl_pct)
+            elif actual_sl_pct > 0.02:
+                actual_sl_pct = 0.02
+                sl = current_price * (1 - actual_sl_pct) if direction == "BULLISH" else current_price * (1 + actual_sl_pct)
             return sl, actual_sl_pct * 100
-            
         except Exception as e:
             logger.error(f"Error in _calculate_sl_levels: {e}")
-            sl_pct = 0.01  # 1% default
+            sl_pct = 0.015
             if direction == "BULLISH":
                 return current_price * (1 - sl_pct), sl_pct * 100
             return current_price * (1 + sl_pct), sl_pct * 100
@@ -132,19 +115,11 @@ class SignalGenerator:
             current_price = df['close'].iloc[-1]
             if pd.isna(current_price) or current_price <= 0:
                 return None
-
-            # Calculate indicators
             indicators = {}
-            
-            # EMA
             emas = self.ta.calculate_ema(df, [20, 50, 200])
             indicators['ema'] = 'BULLISH' if emas['ema_20'].iloc[-1] > emas['ema_50'].iloc[-1] else 'BEARISH'
-
-            # MACD
             macd_dict = self.ta.calculate_macd(df)
             indicators['macd'] = 'BULLISH' if macd_dict['macd'].iloc[-1] > macd_dict['signal'].iloc[-1] else 'BEARISH'
-
-            # RSI
             rsi = self.ta.calculate_rsi(df)
             rsi_value = rsi.iloc[-1] if not rsi.empty else 50
             if rsi_value > 60:
@@ -153,8 +128,6 @@ class SignalGenerator:
                 indicators['rsi'] = 'BEARISH'
             else:
                 indicators['rsi'] = 'NEUTRAL'
-
-            # Bollinger Bands
             bb = self.ta.calculate_bollinger_bands(df)
             if current_price > bb['upper'].iloc[-1]:
                 indicators['bb'] = 'BULLISH'
@@ -162,12 +135,8 @@ class SignalGenerator:
                 indicators['bb'] = 'BEARISH'
             else:
                 indicators['bb'] = 'NEUTRAL'
-
-            # ADX
             adx = self.ta.calculate_adx(df, period=14)
             indicators['adx'] = float(adx.iloc[-1]) if not adx.empty else 0
-
-            # Fibonacci Retracement
             if len(df) >= 50:
                 max_price = df['high'].iloc[-50:].max()
                 min_price = df['low'].iloc[-50:].min()
@@ -176,12 +145,8 @@ class SignalGenerator:
                 indicators['fib'] = 'BULLISH' if current_price > fib_618 else 'BEARISH'
             else:
                 indicators['fib'] = 'NEUTRAL'
-
-            # ATR
             atr = self.ta.calculate_atr(df, period=14)
             indicators['atr'] = float(atr.iloc[-1]) if not atr.empty else 0
-
-            # Stochastic RSI
             stoch_rsi = self.ta.calculate_stoch_rsi(df)
             stoch_rsi_value = stoch_rsi.iloc[-1] if not stoch_rsi.empty else 0
             if stoch_rsi_value > 0.8:
@@ -190,17 +155,11 @@ class SignalGenerator:
                 indicators['stoch_rsi'] = 'BEARISH'
             else:
                 indicators['stoch_rsi'] = 'NEUTRAL'
-
-            # SuperTrend
             supertrend = self.ta.calculate_supertrend(df)
             indicators['supertrend'] = 'BULLISH' if supertrend['in_uptrend'].iloc[-1] else 'BEARISH'
-
-            # VWAP
             vwap = self.ta.calculate_vwap(df)
             vwap_value = vwap.iloc[-1] if not vwap.empty else current_price
             indicators['vwap'] = 'BULLISH' if current_price > vwap_value else 'BEARISH'
-
-            # Determine direction based on indicators
             directions = [
                 indicators['ema'], indicators['macd'], indicators['rsi'], indicators['bb'],
                 indicators['fib'], indicators['stoch_rsi'], indicators['supertrend'], indicators['vwap']
@@ -209,22 +168,16 @@ class SignalGenerator:
                 'BULLISH': directions.count('BULLISH'),
                 'BEARISH': directions.count('BEARISH')
             }
-            
             if direction_counts['BULLISH'] > direction_counts['BEARISH']:
                 direction = 'BULLISH'
             elif direction_counts['BEARISH'] > direction_counts['BULLISH']:
                 direction = 'BEARISH'
             else:
                 direction = 'NEUTRAL'
-
-            # Calculate confidence based on indicator agreement
             agree_count = max(direction_counts.values())
             confidence = 0.7 + (0.3 * (agree_count / 4))
-
-            # Calculate TP levels (0.8% to 1.5% based on ATR)
             atr_percent = (indicators['atr'] / current_price) if current_price > 0 else 0.01
             tp1_pct = min(max(0.008, atr_percent * 0.8), 0.015)
-            
             if direction == "BULLISH":
                 tp1 = current_price * (1 + tp1_pct)
                 tp2 = current_price * (1 + tp1_pct * 1.5)
@@ -233,25 +186,16 @@ class SignalGenerator:
                 tp1 = current_price * (1 - tp1_pct)
                 tp2 = current_price * (1 - tp1_pct * 1.5)
                 tp3 = current_price * (1 - tp1_pct * 2)
-
             tp_levels = [tp1, tp2, tp3]
-
-            # Calculate SL with improved logic
             sl, sl_pct = self._calculate_sl_levels(df, current_price, direction)
-
-            # Calculate risk/reward ratio
             if direction == "BULLISH":
                 risk = current_price - sl
                 reward = tp1 - current_price
             else:
                 risk = sl - current_price
                 reward = current_price - tp1
-            
             risk_reward = reward / risk if risk != 0 else 0
-
-            # Calculate win probability
             win_probability = 0.7 + (0.2 * (confidence - 0.7) / 0.3)
-
             signal = {
                 'symbol': symbol,
                 'direction': direction,
@@ -267,25 +211,17 @@ class SignalGenerator:
                 'leverage': 10,
                 'indicators': indicators
             }
-
-            # Validate signal
             if direction == "NEUTRAL":
                 return None
-
-            # Additional validation for TP/SL levels
             if direction == "BULLISH":
                 if not all(tp > current_price for tp in tp_levels) or not (sl < current_price):
                     return None
-            else:  # BEARISH
+            else:
                 if not all(tp < current_price for tp in tp_levels) or not (sl > current_price):
                     return None
-
-            # Ensure risk/reward is reasonable
             if risk_reward < 1.0:
                 return None
-
             return signal
-
         except Exception as e:
             logger.error(f"Error generating signal for {symbol} on {timeframe}: {e}")
             return None
@@ -295,20 +231,16 @@ class SignalGenerator:
             if not symbol:
                 logger.warning("Invalid symbol provided")
                 return []
-
             if symbol in self.used_coins:
                 logger.info(f"Skipping {symbol}: Already used for signal in this session")
                 return []
-
             current_time = time.time()
             if symbol in self.last_signal_time and (current_time - self.last_signal_time[symbol]) < self.cooldown_period:
                 logger.info(f"Skipping {symbol} due to signal cooldown")
                 return []
-
-            timeframes = ['15m', '1h', '4h', '1d']
+            timeframes = ['5m', '15m', '1h', '4h']
             signals = []
             directions = []
-
             for tf in timeframes:
                 df = await self.get_historical_data(symbol, tf, limit=120)
                 if df.empty or len(df) < getattr(self.config, 'MIN_CANDLES', 100):
@@ -317,8 +249,6 @@ class SignalGenerator:
                 if signal and signal['direction'] != 'NEUTRAL':
                     signals.append(signal)
                     directions.append(signal['direction'])
-
-            # Require all 4 timeframes to agree on the same direction
             if len(signals) >= 2:
                 dir_counts = {'BULLISH': directions.count('BULLISH'), 'BEARISH': directions.count('BEARISH')}
                 if dir_counts['BULLISH'] >= 2:
@@ -327,11 +257,8 @@ class SignalGenerator:
                     agreed_direction = 'BEARISH'
                 else:
                     return []
-
                 agreeing_signals = [s for s in signals if s['direction'] == agreed_direction]
                 base_signal = max(agreeing_signals, key=lambda s: s['confidence'])
-
-                # Strict: all 8 indicators must agree, ADX > 40, confidence > 0.85, risk/reward > 1.5, win_prob > 0.8
                 agree_count = sum([
                     base_signal['indicators']['ema'] == base_signal['direction'],
                     base_signal['indicators']['macd'] == base_signal['direction'],
@@ -342,25 +269,19 @@ class SignalGenerator:
                     base_signal['indicators']['supertrend'] == base_signal['direction'],
                     base_signal['indicators']['vwap'] == base_signal['direction']
                 ])
-                
-                # EMA200 strict filter
                 ema200 = self.ta.calculate_ema(df, [200])['ema_200'].iloc[-1]
                 if agreed_direction == 'BULLISH' and base_signal['entry'] < ema200:
                     return []
                 if agreed_direction == 'BEARISH' and base_signal['entry'] > ema200:
                     return []
-                    
-                # Volume strict filter
                 recent_vol = df['volume'].iloc[-40:].mean()
                 if df['volume'].iloc[-1] < recent_vol:
                     return []
-                    
                 if (agree_count == 4 and
                     base_signal['indicators']['adx'] > 25 and
                     base_signal['confidence'] > 0.75 and
                     base_signal['risk_reward'] > 1.3 and
                     base_signal['win_probability'] > 0.7):
-                    
                     self.last_signal[symbol] = base_signal
                     self.last_signal_time[symbol] = current_time
                     self.scanned_symbols.add(symbol)
@@ -378,7 +299,6 @@ class SignalGenerator:
             if not symbols:
                 logger.error("No symbols found")
                 return
-
             logger.info(f"Scanning {len(symbols)} trading pairs")
             available_symbols = [s for s in symbols if s not in self.scanned_symbols and s not in self.used_coins]
             if not available_symbols:
@@ -386,15 +306,13 @@ class SignalGenerator:
                 self.scanned_symbols.clear()
                 self.used_coins.clear()
                 available_symbols = symbols
-
             for symbol in available_symbols:
                 signals = await self.analyze_pair(symbol)
                 for signal in signals:
                     message = self.format_signal(signal)
                     logger.info(f"Valid signal for {symbol}:\n{message}")
                     await self._execute_trade(signal, message)
-                await asyncio.sleep(1)  # Avoid rate limits
-
+                await asyncio.sleep(1)
         except Exception as e:
             logger.error(f"Error in scan_market: {e}")
         finally:
@@ -467,7 +385,6 @@ class SignalGenerator:
         except Exception as e:
             logger.error(f"Telegram connection failed: {e}")
             print("❌ Telegram connection failed, continuing with console")
-
         while True:
             try:
                 print("🔍 Scanning market...")
@@ -486,6 +403,3 @@ if __name__ == "__main__":
     config = Config()
     bot = SignalGenerator(config)
     asyncio.run(bot.run())
-
-
-
