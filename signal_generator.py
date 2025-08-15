@@ -75,27 +75,33 @@ class SignalGenerator:
             return pd.DataFrame()
 
     def _calculate_sl_levels(self, df: pd.DataFrame, current_price: float, direction: str) -> Tuple[float, float]:
-        """Calculate stop loss levels dynamically between 1% and 2% based on market conditions."""
+        """Hybrid: SL is always 1-2% away, but never violates swing low/high and direction rules."""
         try:
             atr = self.ta.calculate_atr(df, period=14)
             atr_value = atr.iloc[-1] if not atr.empty else 0
             atr_percent = (atr_value / current_price) if current_price > 0 else 0.01
             random_factor = random.uniform(1.0, 2.0)
             sl_pct = min(max(0.01, atr_percent * random_factor), 0.02)
+
             if direction == "BULLISH":
-                sl = current_price * (1 - sl_pct)
+                sl_candidate = current_price * (1 - sl_pct)
                 swing_low = df['low'].iloc[-10:].min()
-                sl = min(sl, swing_low)
+                # SL must be below entry, and not closer than 1% below, but not lower than swing low
+                sl = max(sl_candidate, swing_low)
+                sl = min(sl, current_price * 0.99)
+                # Never above entry
+                sl = min(sl, current_price - (current_price * 0.001))
             else:
-                sl = current_price * (1 + sl_pct)
+                sl_candidate = current_price * (1 + sl_pct)
                 swing_high = df['high'].iloc[-10:].max()
-                sl = max(sl, swing_high)
-            min_distance = current_price * 0.003
-            if direction == "BULLISH":
-                sl = min(sl, current_price - min_distance)
-            else:
-                sl = max(sl, current_price + min_distance)
+                # SL must be above entry, and not closer than 1% above, but not higher than swing high
+                sl = min(sl_candidate, swing_high)
+                sl = max(sl, current_price * 1.01)
+                # Never below entry
+                sl = max(sl, current_price + (current_price * 0.001))
+
             actual_sl_pct = abs((sl - current_price) / current_price)
+            # Final enforcement
             if actual_sl_pct < 0.01:
                 actual_sl_pct = 0.01
                 sl = current_price * (1 - actual_sl_pct) if direction == "BULLISH" else current_price * (1 + actual_sl_pct)
