@@ -226,7 +226,7 @@ class SignalGenerator:
                 if not all(tp < current_price for tp in tp_levels) or not (sl > current_price):
                     print("DEBUG: TP or SL invalid for BEARISH")
                     return None
-            if risk_reward < 1.0:
+            if risk_reward < 0.7:   # LOWERED FROM 1.0
                 print("DEBUG: risk_reward too low")
                 return None
             return signal
@@ -297,7 +297,7 @@ class SignalGenerator:
                 if (agree_count == 4 and
                     base_signal['indicators']['adx'] > 25 and
                     base_signal['confidence'] > 0.75 and
-                    base_signal['risk_reward'] > 1.3 and
+                    base_signal['risk_reward'] > 0.7 and   # LOWERED FROM 1.3
                     base_signal['win_probability'] > 0.7):
                     self.last_signal[symbol] = base_signal
                     self.last_signal_time[symbol] = current_time
