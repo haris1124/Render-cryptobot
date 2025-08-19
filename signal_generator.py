@@ -247,7 +247,7 @@ class SignalGenerator:
             if symbol in self.last_signal_time and (current_time - self.last_signal_time[symbol]) < self.cooldown_period:
                 logger.info(f"Skipping {symbol} due to signal cooldown")
                 return []
-            timeframes = ['5m', '15m', '1h', '4h']
+            timeframes = ['15m', '30m', '1h', '4h']
             signals = []
             directions = []
             for tf in timeframes:
