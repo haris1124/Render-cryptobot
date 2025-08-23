@@ -114,7 +114,8 @@ class SignalGenerator:
 
     async def _generate_signal(self, symbol: str, timeframe: str, df: pd.DataFrame) -> Optional[Dict]:
         try:
-            current_price = df['close'].iloc[-1]
+            ticker = await self.binance_client.fetch_ticker(symbol)
+            current_price = ticker['last']
             if pd.isna(current_price) or current_price <= 0:
                 print("DEBUG: Invalid current price")
                 return None
